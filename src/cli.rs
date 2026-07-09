@@ -9,6 +9,7 @@ use crate::config::{render_humano, Config, ConfigKey};
 use crate::errors::TexError;
 use crate::interactive::{confirm_create_dir, confirm_overwrite, run_init_prompts};
 use crate::paths::config_file_path;
+use crate::templates::{list_templates, render_template_list_humano};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -219,8 +220,26 @@ pub fn handle_config_show(format: ShowFormat) -> Result<()> {
     Ok(())
 }
 
-pub fn handle_templates_list(_format: ShowFormat) -> Result<()> {
-    Err(anyhow!("handle_templates_list: não implementado"))
+pub fn handle_templates_list(format: ShowFormat) -> Result<()> {
+    let path = config_file_path()?;
+    let cfg = Config::load(&path)?;
+    let dir = &cfg.paths.templates_dir;
+    let templates = list_templates(dir)?;
+
+    match format {
+        ShowFormat::Humano => {
+            print!("{}", render_template_list_humano(dir, &templates));
+        }
+        ShowFormat::Json => {
+            println!("{}", serde_json::to_string_pretty(&templates)?);
+        }
+        ShowFormat::Toml => {
+            return Err(anyhow!(
+                "--format=toml não é suportado em templates list. Use humano ou json."
+            ));
+        }
+    }
+    Ok(())
 }
 
 pub fn handle_templates_show(_name: String) -> Result<()> {
