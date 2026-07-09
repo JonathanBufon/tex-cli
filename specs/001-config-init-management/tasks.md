@@ -144,7 +144,7 @@ description: "Task list for feature 001-config-init-management"
 
 **Purpose**: Verificações transversais, higiene de código, documentação mínima. Independente das user stories mas exige que todas estejam completas.
 
-- [ ] T030 [P] Criar `tests/cli_banner.rs` validando contratos transversais do banner (`contracts/cli.md` › seção Banner):
+- [X] T030 [P] Criar `tests/cli_banner.rs` validando contratos transversais do banner (`contracts/cli.md` › seção Banner):
   - `banner_appears_on_init_stderr`
   - `banner_appears_on_config_show_stderr`
   - `banner_appears_on_config_set_stderr`
