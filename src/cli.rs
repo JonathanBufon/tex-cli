@@ -38,6 +38,51 @@ pub enum Commands {
     /// Inspeciona ou altera o config atual.
     #[command(subcommand)]
     Config(ConfigCmd),
+
+    /// Gerencia templates LaTeX em `paths.templates_dir`.
+    Templates(TemplatesArgs),
+}
+
+#[derive(Debug, clap::Args)]
+pub struct TemplatesArgs {
+    #[command(subcommand)]
+    pub command: Option<TemplatesCmd>,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum TemplatesCmd {
+    /// Lista os arquivos `.tex` em `paths.templates_dir`.
+    List {
+        #[arg(long, default_value = "humano")]
+        format: ShowFormat,
+    },
+
+    /// Imprime o conteúdo bruto de um template no stdout.
+    Show { name: String },
+
+    /// Adiciona um novo template copiando um arquivo do host.
+    Add(AddTemplateArgs),
+
+    /// Remove um template do `paths.templates_dir`.
+    Remove {
+        name: String,
+        #[arg(long)]
+        force: bool,
+    },
+}
+
+#[derive(Debug, clap::Args)]
+pub struct AddTemplateArgs {
+    /// Caminho do arquivo `.tex` no host.
+    pub source_path: std::path::PathBuf,
+
+    /// Nome final do template (default = basename do arquivo, sem `.tex`).
+    #[arg(short = 'n', long)]
+    pub name: Option<String>,
+
+    /// Sobrescreve template existente sem pedir confirmação.
+    #[arg(long)]
+    pub force: bool,
 }
 
 #[derive(Debug, clap::Args)]
@@ -172,6 +217,26 @@ pub fn handle_config_show(format: ShowFormat) -> Result<()> {
 
     print!("{rendered}");
     Ok(())
+}
+
+pub fn handle_templates_list(_format: ShowFormat) -> Result<()> {
+    Err(anyhow!("handle_templates_list: não implementado"))
+}
+
+pub fn handle_templates_show(_name: String) -> Result<()> {
+    Err(anyhow!("handle_templates_show: não implementado"))
+}
+
+pub fn handle_templates_add(_args: AddTemplateArgs) -> Result<()> {
+    Err(anyhow!("handle_templates_add: não implementado"))
+}
+
+pub fn handle_templates_remove(_name: String, _force: bool) -> Result<()> {
+    Err(anyhow!("handle_templates_remove: não implementado"))
+}
+
+pub fn handle_templates_menu() -> Result<()> {
+    Err(anyhow!("handle_templates_menu: não implementado"))
 }
 
 pub fn handle_config_set(key: String, value: String) -> Result<()> {
