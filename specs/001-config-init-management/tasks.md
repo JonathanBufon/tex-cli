@@ -68,7 +68,7 @@ description: "Task list for feature 001-config-init-management"
   - `init_prompts_to_create_missing_templates_dir`: informa dir inexistente, responde "sim", verifica que dir foi criado.
   - `init_warns_but_persists_when_tectonic_missing`: usa `env("PATH","/tmp/empty")`, verifica que stderr tem warning `'tectonic' não foi encontrado`, mas arquivo é gravado com sucesso.
   - `init_banner_in_stderr_never_stdout`: roda init, captura stdout e stderr separados, verifica banner presente em stderr, ausente em stdout.
-- [ ] T011 [P] [US1] Unit tests em `src/config.rs` (`#[cfg(test)]`): (a) roundtrip serde de `Config` completo; (b) `deny_unknown_fields` rejeita campo extra; (c) `save_atomic` sobre path inexistente cria; (d) `save_atomic` sobre path existente substitui atomicamente (verificar via read imediatamente após); (e) permissão do arquivo final é `0o600` (via `std::os::unix::fs::PermissionsExt`).
+- [X] T011 [P] [US1] Unit tests em `src/config.rs` (`#[cfg(test)]`): (a) roundtrip serde de `Config` completo; (b) `deny_unknown_fields` rejeita campo extra; (c) `save_atomic` sobre path inexistente cria; (d) `save_atomic` sobre path existente substitui atomicamente (verificar via read imediatamente após); (e) permissão do arquivo final é `0o600` (via `std::os::unix::fs::PermissionsExt`).
 
 ### Implementation for User Story 1
 

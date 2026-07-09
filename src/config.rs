@@ -147,6 +147,45 @@ ask_output_path_every_time = false
     }
 
     #[test]
+    fn save_atomic_creates_file_on_missing_path() {
+        let tmp = tempfile::tempdir().unwrap();
+        let target = tmp.path().join("nested").join("config.toml");
+        let cfg = sample_config();
+
+        cfg.save_atomic(&target).unwrap();
+
+        assert!(target.exists());
+        let back: Config = toml::from_str(&std::fs::read_to_string(&target).unwrap()).unwrap();
+        assert_eq!(back, cfg);
+    }
+
+    #[test]
+    fn save_atomic_overwrites_existing_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        let target = tmp.path().join("config.toml");
+        std::fs::write(&target, "old content").unwrap();
+
+        let cfg = sample_config();
+        cfg.save_atomic(&target).unwrap();
+
+        let written = std::fs::read_to_string(&target).unwrap();
+        assert!(written.contains("tectonic"));
+        assert!(!written.contains("old content"));
+    }
+
+    #[test]
+    fn save_atomic_sets_mode_0600() {
+        let tmp = tempfile::tempdir().unwrap();
+        let target = tmp.path().join("config.toml");
+        let cfg = sample_config();
+
+        cfg.save_atomic(&target).unwrap();
+
+        let mode = std::fs::metadata(&target).unwrap().permissions().mode();
+        assert_eq!(mode & 0o777, 0o600, "expected 0o600, got {:o}", mode & 0o777);
+    }
+
+    #[test]
     fn deny_unknown_top_level_section_rejected() {
         let bad = r#"
 [paths]
