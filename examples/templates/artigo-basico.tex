@@ -1,0 +1,55 @@
+% Template: artigo-basico
+% Um artigo científico standalone em ABNT-like, sem dependências.
+%
+% Derivado/inspirado em github.com/Eranot/Unotex (LPPL 1.3c).
+% Simplificado para uso como standalone (sem unotex.cls).
+
+\documentclass[12pt,a4paper,oneside]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazilian]{babel}
+\usepackage[left=3cm,right=2cm,top=3cm,bottom=2cm]{geometry}
+\usepackage{indentfirst}
+\usepackage{setspace}
+\usepackage{titlesec}
+
+% ABNT-like: espaçamento 1.5, parágrafo com recuo, sem paragraph skip.
+\onehalfspacing
+\setlength{\parindent}{1.25cm}
+\setlength{\parskip}{0pt}
+
+% Título de seções em CAIXA ALTA.
+\titleformat{\section}{\normalfont\large\bfseries\MakeUppercase}{\thesection}{1em}{}
+
+\title{\textbf{ {{ titulo | default(value="Título do Artigo") }} }}
+\author{ {{ autor | default(value="Nome do Autor") }} \\
+         \small\texttt{ {{ email | default(value="autor@exemplo.br") }} } }
+\date{ {{ data | default(value="\today") }} }
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+    {{ resumo | default(value="Resumo do trabalho aqui: contexto, objetivo, método, resultados e conclusão em até 250 palavras.") }}
+
+    \vspace{6pt}\noindent\textbf{Palavras-chave:} {{ palavras_chave | default(value="palavra-1; palavra-2; palavra-3") }}.
+\end{abstract}
+
+\section{Introdução}
+
+{{ introducao | default(value="Contextualize o problema, apresente a motivação e enuncie o objetivo do trabalho.") }}
+
+\section{Desenvolvimento}
+
+{{ desenvolvimento | default(value="Descreva método, dados, análise. Divida em subseções conforme necessário.") }}
+
+\section{Considerações Finais}
+
+{{ conclusao | default(value="Retome o objetivo, sintetize os principais achados e aponte trabalhos futuros.") }}
+
+\begin{thebibliography}{9}
+    \bibitem{eranot2020} ERANOT. \textit{Unotex: modelo LaTeX para trabalhos acadêmicos da Unochapecó}. GitHub, 2020. Disponível em: \url{https://github.com/Eranot/Unotex}. Acesso em: \today.
+\end{thebibliography}
+
+\end{document}
