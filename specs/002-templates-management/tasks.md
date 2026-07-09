@@ -66,7 +66,7 @@ description: "Task list for feature 002-templates-management"
   - `list_empty_dir_json_returns_empty_array`: `--format=json` → stdout `[]` + exit 0.
   - `list_templates_dir_missing_exits_22`: config aponta pra path inexistente → exit 22, stderr menciona `config set paths.templates_dir`.
   - `list_missing_config_exits_10`: sem config → exit 10.
-- [ ] T006 [P] [US1] Unit tests inline em `src/templates.rs` (`#[cfg(test)] mod tests`) cobrindo:
+- [X] T006 [P] [US1] Unit tests inline em `src/templates.rs` (`#[cfg(test)] mod tests`) cobrindo:
   - `list_templates_returns_only_tex`: dir com `.tex` + `.bib` → só `.tex`.
   - `list_templates_sorts_alphabetically`: ordem determinística por `name` byte-order.
   - `list_templates_missing_dir_returns_templates_dir_missing`: dir não existe → erro.
@@ -75,9 +75,9 @@ description: "Task list for feature 002-templates-management"
 
 ### Implementation for User Story 1
 
-- [ ] T007 [P] [US1] Implementar `struct Template` em `src/templates.rs` conforme data-model.md: campos `name: String`, `path: PathBuf`, `size_bytes: u64`, `modified_at_epoch: u64`. Derivar `Debug, Clone, PartialEq, Eq, serde::Serialize`.
-- [ ] T008 [US1] Implementar `pub fn list_templates(dir: &Path) -> Result<Vec<Template>, TexError>` em `src/templates.rs`: (1) `dir.exists() && dir.is_dir()` → senão `TemplatesDirMissing`; (2) `fs::read_dir` mapeando `PermissionDenied` → `TexError::PermissionDenied`; (3) filtrar entradas `.file_type().is_file() && path.extension() == Some("tex")`; (4) construir `Template` via `metadata()`, com `modified_at_epoch = metadata.modified().and_then(|t| t.duration_since(UNIX_EPOCH)).map(|d| d.as_secs()).unwrap_or(0)`; (5) ordenar `by_key(|t| t.name.clone())`. Depende de T002, T007.
-- [ ] T009 [P] [US1] Implementar `pub fn render_template_list_humano(templates: &[Template]) -> String` em `src/templates.rs`: cabeçalho `NOME     TAMANHO   MODIFICADO`, uma linha por template com `name` truncado a 20 chars, `size_bytes` alinhado à direita, `modified_at_epoch` formatado como `YYYY-MM-DD HH:MM` via cálculo manual a partir de `SystemTime` (D-01 do research). Se vazio, retorna `"Nenhum template encontrado em {dir}.\n"`. Testado por unit test inline.
+- [X] T007 [P] [US1] Implementar `struct Template` em `src/templates.rs` conforme data-model.md: campos `name: String`, `path: PathBuf`, `size_bytes: u64`, `modified_at_epoch: u64`. Derivar `Debug, Clone, PartialEq, Eq, serde::Serialize`.
+- [X] T008 [US1] Implementar `pub fn list_templates(dir: &Path) -> Result<Vec<Template>, TexError>` em `src/templates.rs`: (1) `dir.exists() && dir.is_dir()` → senão `TemplatesDirMissing`; (2) `fs::read_dir` mapeando `PermissionDenied` → `TexError::PermissionDenied`; (3) filtrar entradas `.file_type().is_file() && path.extension() == Some("tex")`; (4) construir `Template` via `metadata()`, com `modified_at_epoch = metadata.modified().and_then(|t| t.duration_since(UNIX_EPOCH)).map(|d| d.as_secs()).unwrap_or(0)`; (5) ordenar `by_key(|t| t.name.clone())`. Depende de T002, T007.
+- [X] T009 [P] [US1] Implementar `pub fn render_template_list_humano(templates: &[Template]) -> String` em `src/templates.rs`: cabeçalho `NOME     TAMANHO   MODIFICADO`, uma linha por template com `name` truncado a 20 chars, `size_bytes` alinhado à direita, `modified_at_epoch` formatado como `YYYY-MM-DD HH:MM` via cálculo manual a partir de `SystemTime` (D-01 do research). Se vazio, retorna `"Nenhum template encontrado em {dir}.\n"`. Testado por unit test inline.
 - [ ] T010 [US1] Implementar `handle_templates_list(format: ShowFormat)` em `src/cli.rs`: (1) `Config::load(config_file_path()?)?`; (2) `list_templates(&cfg.paths.templates_dir)?`; (3) match no `format`: `Humano` → `render_template_list_humano(&templates)` + `print!`; `Json` → `serde_json::to_string_pretty(&templates)? + "\n"` + `print!`; `Toml` → retornar erro `anyhow!("--format=toml não suportado em templates list")` (contrato: só humano e json). Depende de T008, T009. Requer também exportar `ShowFormat` de `src/cli.rs` (já público desde spec 001).
 - [ ] T011 [US1] Rodar `tests/cli_templates_list.rs` no container. Todos os 8 testes devem passar. Ajustar mensagens/format para casarem com predicates. Rodar `cargo test --lib` para confirmar unit tests de US1 também passam.
 
