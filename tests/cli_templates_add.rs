@@ -94,7 +94,7 @@ fn add_binary_source_exits_21() {
 
     let source = home.path().join("bin.tex");
     // 0xFF is invalid as a UTF-8 continuation on its own.
-    std::fs::write(&source, &[0xFFu8, 0xFEu8, 0xFDu8]).unwrap();
+    std::fs::write(&source, [0xFFu8, 0xFEu8, 0xFDu8]).unwrap();
 
     add_cmd(&home)
         .arg(source.to_str().unwrap())

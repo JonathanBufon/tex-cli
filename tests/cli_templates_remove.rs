@@ -49,10 +49,7 @@ fn remove_without_force_non_tty_exits_15_and_keeps_file() {
     std::fs::write(templates.join("carta.tex"), b"payload\n").unwrap();
     write_config(&home, &templates);
 
-    remove_cmd(&home, "carta")
-        .assert()
-        .failure()
-        .code(15);
+    remove_cmd(&home, "carta").assert().failure().code(15);
 
     assert!(templates.join("carta.tex").exists());
 }

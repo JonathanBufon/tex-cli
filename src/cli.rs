@@ -326,9 +326,7 @@ pub fn handle_templates_remove(name: String, force: bool) -> Result<()> {
     } else if std::io::stdin().is_terminal() {
         confirm_remove_template(&name)?
     } else {
-        eprintln!(
-            "Template '{name}' não removido: use --force ou execute em terminal interativo."
-        );
+        eprintln!("Template '{name}' não removido: use --force ou execute em terminal interativo.");
         false
     };
 

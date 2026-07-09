@@ -246,7 +246,10 @@ pub fn render_template_list_humano(dir: &Path, templates: &[Template]) -> String
     for t in templates {
         let name = truncate_name(&t.name, 20);
         let modified = format_epoch_local(t.modified_at_epoch);
-        out.push_str(&format!("{:<20}  {:>8}   {}\n", name, t.size_bytes, modified));
+        out.push_str(&format!(
+            "{:<20}  {:>8}   {}\n",
+            name, t.size_bytes, modified
+        ));
     }
     out
 }
@@ -306,7 +309,7 @@ fn epoch_to_ymd_hm(mut epoch: u64) -> (u64, u64, u64, u64, u64) {
 }
 
 fn is_leap(y: u64) -> bool {
-    (y % 4 == 0 && y % 100 != 0) || (y % 400 == 0)
+    (y.is_multiple_of(4) && !y.is_multiple_of(100)) || y.is_multiple_of(400)
 }
 
 fn days_in_month(y: u64, m: u64) -> u64 {
@@ -473,7 +476,10 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let err = resolve_template(tmp.path(), "parecer").unwrap_err();
         match err {
-            TexError::TemplateNotFound { name, templates_dir } => {
+            TexError::TemplateNotFound {
+                name,
+                templates_dir,
+            } => {
                 assert_eq!(name, "parecer");
                 assert_eq!(templates_dir, tmp.path());
             }
@@ -516,7 +522,10 @@ mod tests {
         assert!(!outcome.overwrote_existing);
         assert_eq!(outcome.bytes_written, 10);
 
-        let mode = std::fs::metadata(&outcome.path).unwrap().permissions().mode();
+        let mode = std::fs::metadata(&outcome.path)
+            .unwrap()
+            .permissions()
+            .mode();
         assert_eq!(mode & 0o777, 0o644);
     }
 
@@ -524,7 +533,7 @@ mod tests {
     fn add_template_binary_returns_invalid_utf8() {
         let tmp = tempfile::tempdir().unwrap();
         let source = tmp.path().join("bin.tex");
-        std::fs::write(&source, &[0xFFu8, 0xFEu8]).unwrap();
+        std::fs::write(&source, [0xFFu8, 0xFEu8]).unwrap();
         let templates = tmp.path().join("dest");
         std::fs::create_dir(&templates).unwrap();
 

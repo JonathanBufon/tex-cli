@@ -102,10 +102,7 @@ fn show_case_sensitive() {
 #[test]
 fn show_missing_config_exits_10() {
     let home = TempDir::new().unwrap();
-    show_cmd(&home, "anything")
-        .assert()
-        .failure()
-        .code(10);
+    show_cmd(&home, "anything").assert().failure().code(10);
 }
 
 #[test]
@@ -114,8 +111,5 @@ fn show_templates_dir_missing_exits_22() {
     let templates = home.path().join("nope");
     write_config(&home, &templates);
 
-    show_cmd(&home, "anything")
-        .assert()
-        .failure()
-        .code(22);
+    show_cmd(&home, "anything").assert().failure().code(22);
 }

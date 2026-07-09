@@ -73,10 +73,7 @@ fn list_json_produces_valid_array() {
     seed_templates(&templates, &["artigo.tex", "carta.tex", "relatorio.tex"]);
     write_config(&home, &templates);
 
-    let output = list_cmd(&home)
-        .args(["--format", "json"])
-        .output()
-        .unwrap();
+    let output = list_cmd(&home).args(["--format", "json"]).output().unwrap();
     assert!(output.status.success());
 
     let stdout = String::from_utf8(output.stdout).unwrap();
@@ -90,10 +87,7 @@ fn list_json_produces_valid_array() {
         assert!(obj.get("modified_at_epoch").is_some());
     }
     // Sorted alphabetically
-    let names: Vec<&str> = arr
-        .iter()
-        .map(|o| o["name"].as_str().unwrap())
-        .collect();
+    let names: Vec<&str> = arr.iter().map(|o| o["name"].as_str().unwrap()).collect();
     assert_eq!(names, vec!["artigo", "carta", "relatorio"]);
 }
 
@@ -104,13 +98,10 @@ fn list_ignores_non_tex_files() {
     std::fs::create_dir_all(&templates).unwrap();
     std::fs::write(templates.join("artigo.tex"), "% ok").unwrap();
     std::fs::write(templates.join("refs.bib"), "% bib").unwrap();
-    std::fs::write(templates.join("img.png"), &[0u8, 1, 2]).unwrap();
+    std::fs::write(templates.join("img.png"), [0u8, 1, 2]).unwrap();
     write_config(&home, &templates);
 
-    let output = list_cmd(&home)
-        .args(["--format", "json"])
-        .output()
-        .unwrap();
+    let output = list_cmd(&home).args(["--format", "json"]).output().unwrap();
     let stdout = String::from_utf8(output.stdout).unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&stdout).unwrap();
     assert_eq!(parsed.as_array().unwrap().len(), 1);
@@ -126,10 +117,7 @@ fn list_ignores_subdirs() {
     std::fs::write(templates.join("sub").join("nested.tex"), "% nested").unwrap();
     write_config(&home, &templates);
 
-    let output = list_cmd(&home)
-        .args(["--format", "json"])
-        .output()
-        .unwrap();
+    let output = list_cmd(&home).args(["--format", "json"]).output().unwrap();
     let stdout = String::from_utf8(output.stdout).unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&stdout).unwrap();
     assert_eq!(parsed.as_array().unwrap().len(), 1);
@@ -156,10 +144,7 @@ fn list_empty_dir_json_returns_empty_array() {
     std::fs::create_dir_all(&templates).unwrap();
     write_config(&home, &templates);
 
-    let output = list_cmd(&home)
-        .args(["--format", "json"])
-        .output()
-        .unwrap();
+    let output = list_cmd(&home).args(["--format", "json"]).output().unwrap();
     let stdout = String::from_utf8(output.stdout).unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&stdout).unwrap();
     assert_eq!(parsed.as_array().unwrap().len(), 0);
