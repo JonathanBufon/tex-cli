@@ -312,6 +312,41 @@ echo "list 100 templates: $(( (END - START) / 1000000 )) ms"
 
 ---
 
+## 8b. Métricas medidas (T037)
+
+Executado em `2026-07-09` dentro do container Docker sancionado,
+binário release, config gerado do zero:
+
+| Métrica                                              | Alvo    | Medido |
+|------------------------------------------------------|---------|--------|
+| SC-002 · `templates list --format json` (100 items)  | <100 ms | **1–2 ms** |
+| Build inicial `cargo build --release` (cold)          | —       | ~6 s   |
+| Ciclo `cargo test --all` (target/ quente)             | —       | ~2 s   |
+
+SC-003 (script CI não-interativo) validado end-to-end:
+
+```bash
+tex-cli init --templates-dir /tmp/t --output-dir /tmp/o --engine tectonic --force
+tex-cli templates add examples/templates/artigo-basico.tex
+tex-cli templates add examples/templates/carta.tex
+tex-cli templates list                # 2 templates listados
+echo "% x" > /tmp/eph.tex
+tex-cli templates add /tmp/eph.tex --name eph
+tex-cli templates remove eph --force  # rollback
+```
+
+Zero prompts em cada passo; stdout limpo (banner só em stderr).
+
+### Known follow-up: SIGPIPE em pipes que fecham cedo
+
+Comandos como `tex-cli templates list --format=json | head -5`
+podem panicar com `Broken pipe (os error 32)`. É comportamento
+padrão do Rust — `println!` panica quando stdout é fechado
+prematuramente. Fix futuro: instalar handler `SIG_DFL` para
+`SIGPIPE` no início de `main.rs`. Não bloqueia a v1 da spec 002 —
+uso via `jq empty` (que consome tudo) e via redirect `> file`
+funcionam normalmente.
+
 ## 9. Troubleshooting
 
 | Sintoma                                              | Causa provável                       | Ação                                                     |

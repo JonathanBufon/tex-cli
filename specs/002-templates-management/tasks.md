@@ -196,8 +196,8 @@ description: "Task list for feature 002-templates-management"
 - [X] T033 [P] Rodar `cargo fmt --all -- --check` e `cargo clippy --all-targets --all-features -- -D warnings` no container. Corrigir violações.
 - [X] T034 [P] Estender `README.md` da raiz: seção "Gerenciar templates" com exemplos dos 4 subcomandos + menu interativo. Atualizar tabela de exit codes para incluir 20/21/22. Sem badges.
 - [X] T035 [P] Criar `examples/templates/` com 1–3 templates standalone (`.tex` simples, ex.: `artigo-basico.tex`, `carta.tex`) inspirados por [Eranot/Unotex](https://github.com/Eranot/Unotex) — **credite explicitamente** o autor. Adicionar `examples/LICENSE-EXAMPLES` com o texto do LPPL 1.3c (`curl -sSL https://www.latex-project.org/lppl/lppl-1-3c.txt > examples/LICENSE-EXAMPLES`) e `examples/README.md` explicando origem, atribuição e como usar (`cp examples/templates/*.tex ~/tex/templates/` ou `tex-cli templates add examples/templates/artigo-basico.tex`).
-- [ ] T036 Rodar o quickstart.md do início ao fim dentro do container Docker: build → init → criar templates → `list` → `show` → `add` → `remove`. Documentar tempo total e outcomes no PR.
-- [ ] T037 Validar SC-002 (`templates list --format=json` < 100 ms com 100 templates) usando o script do quickstart § 8. Registrar medição no PR.
+- [X] T036 Rodar o quickstart.md do início ao fim dentro do container Docker: build → init → criar templates → `list` → `show` → `add` → `remove`. Documentar tempo total e outcomes no PR.
+- [X] T037 Validar SC-002 (`templates list --format=json` < 100 ms com 100 templates) usando o script do quickstart § 8. Registrar medição no PR.
 
 **Checkpoint**: Feature completa, testada, documentada, com exemplos atribuídos e performance validada.
 
