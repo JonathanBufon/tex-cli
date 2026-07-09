@@ -1,5 +1,12 @@
+use std::fs;
+
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand, ValueEnum};
+
+use crate::config::Config;
+use crate::errors::TexError;
+use crate::interactive::{confirm_create_dir, confirm_overwrite, run_init_prompts};
+use crate::paths::config_file_path;
 
 #[derive(Debug, Parser)]
 #[command(
@@ -51,7 +58,56 @@ pub enum ShowFormat {
 }
 
 pub fn handle_init() -> Result<()> {
-    Err(anyhow!("handle_init: não implementado"))
+    let config_path = config_file_path()?;
+
+    if config_path.exists() {
+        let ok = confirm_overwrite(&config_path)?;
+        if !ok {
+            return Err(anyhow::Error::new(TexError::UserAborted));
+        }
+    }
+
+    let answers = run_init_prompts()?;
+
+    ensure_dir(&answers.templates_dir)?;
+    ensure_dir(&answers.output_dir)?;
+
+    check_engine(&answers.engine);
+
+    let cfg = Config::new_from_prompts(
+        answers.templates_dir,
+        answers.output_dir,
+        answers.engine,
+    );
+    cfg.save_atomic(&config_path)?;
+
+    println!("Config gravado em: {}", config_path.display());
+    Ok(())
+}
+
+fn ensure_dir(path: &std::path::Path) -> Result<()> {
+    if path.exists() {
+        return Ok(());
+    }
+    let ok = confirm_create_dir(path)?;
+    if !ok {
+        return Err(anyhow::Error::new(TexError::UserAborted));
+    }
+    fs::create_dir_all(path)?;
+    Ok(())
+}
+
+fn check_engine(engine: &str) {
+    if which::which(engine).is_err() {
+        eprintln!(
+            "Aviso: '{engine}' não foi encontrado no PATH. A preferência foi salva, instale o binário depois."
+        );
+    }
+    if engine != "tectonic" {
+        eprintln!(
+            "Aviso: engine '{engine}' ainda não é executada pelo Tex nesta versão. A preferência foi salva."
+        );
+    }
 }
 
 pub fn handle_config_show(_format: ShowFormat) -> Result<()> {
