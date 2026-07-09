@@ -3,7 +3,9 @@ use std::fs;
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 
-use crate::config::{render_humano, Config};
+use std::str::FromStr;
+
+use crate::config::{render_humano, Config, ConfigKey};
 use crate::errors::TexError;
 use crate::interactive::{confirm_create_dir, confirm_overwrite, run_init_prompts};
 use crate::paths::config_file_path;
@@ -172,6 +174,21 @@ pub fn handle_config_show(format: ShowFormat) -> Result<()> {
     Ok(())
 }
 
-pub fn handle_config_set(_key: String, _value: String) -> Result<()> {
-    Err(anyhow!("handle_config_set: não implementado"))
+pub fn handle_config_set(key: String, value: String) -> Result<()> {
+    let path = config_file_path()?;
+    let mut cfg = Config::load(&path)?;
+    let parsed_key = ConfigKey::from_str(&key)?;
+    let change = cfg.apply(parsed_key, &value)?;
+
+    for warning in &change.warnings {
+        eprintln!("{warning}");
+    }
+
+    cfg.save_atomic(&path)?;
+
+    println!(
+        "Config atualizado: {} = {}",
+        change.key, change.normalized_value
+    );
+    Ok(())
 }
