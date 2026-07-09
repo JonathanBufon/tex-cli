@@ -155,7 +155,7 @@ description: "Task list for feature 002-templates-management"
 
 ### Tests for User Story 4 ⚠️
 
-- [ ] T024 [P] [US4] Criar `tests/cli_templates_remove.rs`:
+- [X] T024 [P] [US4] Criar `tests/cli_templates_remove.rs`:
   - `remove_without_force_non_tty_exits_15_and_keeps_file`: exit 15, arquivo intacto.
   - `remove_with_force_deletes_file`: exit 0, arquivo não existe, stdout `Template '<name>' removido de <caminho>`.
   - `remove_nonexistent_exits_20`: exit 20, sem alterar diretório.
