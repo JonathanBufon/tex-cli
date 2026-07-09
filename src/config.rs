@@ -1,7 +1,9 @@
+use std::fmt;
 use std::fs;
 use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
@@ -70,6 +72,60 @@ pub fn render_humano(c: &Config) -> String {
     ));
 
     out
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConfigKey {
+    PathsTemplatesDir,
+    PathsOutputDir,
+    CompilerEngine,
+    CompilerKeepTex,
+    CompilerKeepLogs,
+    BehaviorAskOutputPathEveryTime,
+}
+
+impl ConfigKey {
+    pub const ALL: &'static [ConfigKey] = &[
+        ConfigKey::PathsTemplatesDir,
+        ConfigKey::PathsOutputDir,
+        ConfigKey::CompilerEngine,
+        ConfigKey::CompilerKeepTex,
+        ConfigKey::CompilerKeepLogs,
+        ConfigKey::BehaviorAskOutputPathEveryTime,
+    ];
+
+    pub fn canonical(&self) -> &'static str {
+        match self {
+            ConfigKey::PathsTemplatesDir => "paths.templates_dir",
+            ConfigKey::PathsOutputDir => "paths.output_dir",
+            ConfigKey::CompilerEngine => "compiler.engine",
+            ConfigKey::CompilerKeepTex => "compiler.keep_tex",
+            ConfigKey::CompilerKeepLogs => "compiler.keep_logs",
+            ConfigKey::BehaviorAskOutputPathEveryTime => "behavior.ask_output_path_every_time",
+        }
+    }
+}
+
+impl fmt::Display for ConfigKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.canonical())
+    }
+}
+
+impl FromStr for ConfigKey {
+    type Err = TexError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        for key in ConfigKey::ALL {
+            if key.canonical() == s {
+                return Ok(*key);
+            }
+        }
+        Err(TexError::UnknownKey {
+            key: s.to_string(),
+            accepted: ConfigKey::ALL.iter().map(|k| k.canonical()).collect(),
+        })
+    }
 }
 
 pub const DEFAULT_ENGINE: &str = "tectonic";
@@ -195,6 +251,45 @@ ask_output_path_every_time = false
 "#;
         let res = toml::from_str::<Config>(bad);
         assert!(res.is_err(), "extra field should be rejected");
+    }
+
+    #[test]
+    fn config_key_from_str_accepts_all_canonical() {
+        for key in ConfigKey::ALL {
+            let parsed: ConfigKey = key.canonical().parse().unwrap();
+            assert_eq!(&parsed, key);
+        }
+    }
+
+    #[test]
+    fn config_key_from_str_rejects_unknown() {
+        let err = "foo.bar".parse::<ConfigKey>().unwrap_err();
+        match err {
+            TexError::UnknownKey { key, accepted } => {
+                assert_eq!(key, "foo.bar");
+                assert_eq!(accepted.len(), 6);
+            }
+            other => panic!("expected UnknownKey, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn config_key_from_str_rejects_aliases_and_case_variants() {
+        assert!("templates_dir".parse::<ConfigKey>().is_err());
+        assert!("Paths.Templates_dir".parse::<ConfigKey>().is_err());
+        assert!(" paths.templates_dir ".parse::<ConfigKey>().is_err());
+        assert!("PATHS.TEMPLATES_DIR".parse::<ConfigKey>().is_err());
+    }
+
+    #[test]
+    fn config_key_display_returns_canonical() {
+        assert_eq!(ConfigKey::CompilerEngine.to_string(), "compiler.engine");
+        assert_eq!(ConfigKey::PathsOutputDir.to_string(), "paths.output_dir");
+    }
+
+    #[test]
+    fn config_key_all_has_six_entries() {
+        assert_eq!(ConfigKey::ALL.len(), 6);
     }
 
     #[test]

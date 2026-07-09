@@ -127,11 +127,11 @@ description: "Task list for feature 001-config-init-management"
   - `set_missing_config_exits_10`: sem config → exit `10`.
   - `set_engine_non_tectonic_warns_but_persists`: `config set compiler.engine latexmk` → exit `0`, stderr contém warning.
   - `set_path_nonexistent_dir_warns_but_persists`: exit `0`, stderr contém "não existe no momento".
-- [ ] T025 [P] [US3] Unit tests para `ConfigKey` em `src/config.rs`: `FromStr` aceita exatamente as 6 canônicas, rejeita variantes ("templates_dir" sem prefixo, uppercase, alias); `Display` retorna canonical; `ConfigKey::ALL.len() == 6`.
+- [X] T025 [P] [US3] Unit tests para `ConfigKey` em `src/config.rs`: `FromStr` aceita exatamente as 6 canônicas, rejeita variantes ("templates_dir" sem prefixo, uppercase, alias); `Display` retorna canonical; `ConfigKey::ALL.len() == 6`.
 
 ### Implementation for User Story 3
 
-- [ ] T026 [P] [US3] Implementar enum `ConfigKey` em `src/config.rs` conforme `data-model.md`: variantes exaustivas, `impl FromStr` com match exato (sem `to_lowercase`, sem trim), erro `TexError::UnknownKey { key, accepted: ConfigKey::ALL.iter().map(|k| k.canonical()).collect() }`, `impl Display` via `canonical()`, `const ALL: &[ConfigKey]`.
+- [X] T026 [P] [US3] Implementar enum `ConfigKey` em `src/config.rs` conforme `data-model.md`: variantes exaustivas, `impl FromStr` com match exato (sem `to_lowercase`, sem trim), erro `TexError::UnknownKey { key, accepted: ConfigKey::ALL.iter().map(|k| k.canonical()).collect() }`, `impl Display` via `canonical()`, `const ALL: &[ConfigKey]`.
 - [ ] T027 [US3] Implementar `Config::apply(&mut self, key: ConfigKey, raw_value: &str) -> Result<AppliedChange, TexError>` em `src/config.rs`: match na chave, parseia `raw_value` conforme tipo (`bool` estrito aceita apenas "true"/"false"; `path` via `paths::expand_user_path`; `string` verifica não-vazio). Retorna struct `AppliedChange { key, normalized_value, warnings: Vec<String> }`. Warnings preenchidos para engine ≠ tectonic (não suportado), engine sem binário no PATH, e path a diretório inexistente. Depende de T012, T026.
 - [ ] T028 [US3] Estender handler `handle_config_set(key: String, value: String)` em `src/cli.rs`: (1) `Config::load` (exit 10 se ausente); (2) `ConfigKey::from_str(&key)?` (exit 12); (3) `config.apply(key, &value)?` (exit 13 se bool inválido); (4) emitir warnings retornados em stderr; (5) `config.save_atomic(&config_path)?`; (6) stdout `Config atualizado: {key} = {normalized_value}`. Depende de T014, T020, T026, T027.
 - [ ] T029 [US3] Rodar `tests/cli_config_set.rs` e ajustar mensagens.
