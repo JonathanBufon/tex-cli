@@ -51,6 +51,71 @@ pub fn confirm_create_dir(path: &Path) -> Result<bool, TexError> {
         .map_err(map_inquire_err)
 }
 
+pub fn confirm_overwrite_template(name: &str) -> Result<bool, TexError> {
+    Confirm::new(&format!("Sobrescrever template '{name}'?"))
+        .with_default(false)
+        .prompt()
+        .map_err(map_inquire_err)
+}
+
+pub fn confirm_remove_template(name: &str) -> Result<bool, TexError> {
+    Confirm::new(&format!("Remover template '{name}'?"))
+        .with_default(false)
+        .prompt()
+        .map_err(map_inquire_err)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TemplateMenuAction {
+    List,
+    Show,
+    Add,
+    Remove,
+    Quit,
+}
+
+pub fn template_menu() -> Result<TemplateMenuAction, TexError> {
+    let options = vec![
+        "Listar templates",
+        "Inspecionar template",
+        "Adicionar template",
+        "Remover template",
+        "Sair",
+    ];
+    let choice = Select::new("O que fazer com os templates?", options)
+        .with_starting_cursor(0)
+        .prompt()
+        .map_err(map_inquire_err)?;
+
+    Ok(match choice {
+        "Listar templates" => TemplateMenuAction::List,
+        "Inspecionar template" => TemplateMenuAction::Show,
+        "Adicionar template" => TemplateMenuAction::Add,
+        "Remover template" => TemplateMenuAction::Remove,
+        _ => TemplateMenuAction::Quit,
+    })
+}
+
+pub fn prompt_template_name(available: &[String]) -> Result<String, TexError> {
+    if available.is_empty() {
+        return Err(TexError::Io(std::io::Error::other(
+            "nenhum template disponível para seleção",
+        )));
+    }
+    let names: Vec<String> = available.to_vec();
+    let choice = Select::new("Nome do template:", names)
+        .prompt()
+        .map_err(map_inquire_err)?;
+    Ok(choice)
+}
+
+pub fn prompt_source_path() -> Result<std::path::PathBuf, TexError> {
+    let raw = Text::new("Caminho do arquivo .tex:")
+        .prompt()
+        .map_err(map_inquire_err)?;
+    Ok(std::path::PathBuf::from(raw.trim()))
+}
+
 fn map_inquire_err(err: InquireError) -> TexError {
     match err {
         InquireError::OperationCanceled | InquireError::OperationInterrupted => {

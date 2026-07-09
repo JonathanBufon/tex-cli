@@ -7,8 +7,15 @@ use std::str::FromStr;
 
 use crate::config::{render_humano, Config, ConfigKey};
 use crate::errors::TexError;
-use crate::interactive::{confirm_create_dir, confirm_overwrite, run_init_prompts};
+use crate::interactive::{
+    confirm_create_dir, confirm_overwrite, confirm_overwrite_template, confirm_remove_template,
+    prompt_source_path, prompt_template_name, run_init_prompts, template_menu, TemplateMenuAction,
+};
 use crate::paths::config_file_path;
+use crate::templates::{
+    add_template, list_templates, read_template, remove_template, render_template_list_humano,
+    resolve_template,
+};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -38,6 +45,51 @@ pub enum Commands {
     /// Inspeciona ou altera o config atual.
     #[command(subcommand)]
     Config(ConfigCmd),
+
+    /// Gerencia templates LaTeX em `paths.templates_dir`.
+    Templates(TemplatesArgs),
+}
+
+#[derive(Debug, clap::Args)]
+pub struct TemplatesArgs {
+    #[command(subcommand)]
+    pub command: Option<TemplatesCmd>,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum TemplatesCmd {
+    /// Lista os arquivos `.tex` em `paths.templates_dir`.
+    List {
+        #[arg(long, default_value = "humano")]
+        format: ShowFormat,
+    },
+
+    /// Imprime o conteúdo bruto de um template no stdout.
+    Show { name: String },
+
+    /// Adiciona um novo template copiando um arquivo do host.
+    Add(AddTemplateArgs),
+
+    /// Remove um template do `paths.templates_dir`.
+    Remove {
+        name: String,
+        #[arg(long)]
+        force: bool,
+    },
+}
+
+#[derive(Debug, clap::Args)]
+pub struct AddTemplateArgs {
+    /// Caminho do arquivo `.tex` no host.
+    pub source_path: std::path::PathBuf,
+
+    /// Nome final do template (default = basename do arquivo, sem `.tex`).
+    #[arg(short = 'n', long)]
+    pub name: Option<String>,
+
+    /// Sobrescreve template existente sem pedir confirmação.
+    #[arg(long)]
+    pub force: bool,
 }
 
 #[derive(Debug, clap::Args)]
@@ -172,6 +224,159 @@ pub fn handle_config_show(format: ShowFormat) -> Result<()> {
 
     print!("{rendered}");
     Ok(())
+}
+
+pub fn handle_templates_list(format: ShowFormat) -> Result<()> {
+    let path = config_file_path()?;
+    let cfg = Config::load(&path)?;
+    let dir = &cfg.paths.templates_dir;
+    let templates = list_templates(dir)?;
+
+    match format {
+        ShowFormat::Humano => {
+            print!("{}", render_template_list_humano(dir, &templates));
+        }
+        ShowFormat::Json => {
+            println!("{}", serde_json::to_string_pretty(&templates)?);
+        }
+        ShowFormat::Toml => {
+            return Err(anyhow!(
+                "--format=toml não é suportado em templates list. Use humano ou json."
+            ));
+        }
+    }
+    Ok(())
+}
+
+pub fn handle_templates_show(name: String) -> Result<()> {
+    use std::io::Write;
+
+    let path = config_file_path()?;
+    let cfg = Config::load(&path)?;
+    let bytes = read_template(&cfg.paths.templates_dir, &name)?;
+    std::io::stdout().write_all(&bytes)?;
+    Ok(())
+}
+
+pub fn handle_templates_add(args: AddTemplateArgs) -> Result<()> {
+    use std::io::IsTerminal;
+
+    let path = config_file_path()?;
+    let cfg = Config::load(&path)?;
+    let dir = &cfg.paths.templates_dir;
+
+    let dest_name = match &args.name {
+        Some(n) => n.clone(),
+        None => args
+            .source_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .ok_or_else(|| anyhow!("caminho do arquivo fonte inválido"))?
+            .to_string(),
+    };
+    let dest_path = dir.join(format!("{dest_name}.tex"));
+
+    let should_overwrite = if dest_path.exists() && !args.force {
+        if std::io::stdin().is_terminal() {
+            confirm_overwrite_template(&dest_name)?
+        } else {
+            false
+        }
+    } else {
+        true
+    };
+
+    if !should_overwrite {
+        return Err(anyhow::Error::new(TexError::UserAborted));
+    }
+
+    let outcome = add_template(
+        dir,
+        &args.source_path,
+        args.name.as_deref(),
+        args.force || should_overwrite,
+    )?;
+
+    let verb = if outcome.overwrote_existing {
+        "sobrescrito"
+    } else {
+        "adicionado"
+    };
+    println!(
+        "Template '{}' {} em {}.",
+        outcome.name,
+        verb,
+        outcome.path.display()
+    );
+    Ok(())
+}
+
+pub fn handle_templates_remove(name: String, force: bool) -> Result<()> {
+    use std::io::IsTerminal;
+
+    let path = config_file_path()?;
+    let cfg = Config::load(&path)?;
+    let dir = &cfg.paths.templates_dir;
+
+    // Resolve first so a nonexistent name returns exit 20 even with --force.
+    let _ = resolve_template(dir, &name)?;
+
+    let should_remove = if force {
+        true
+    } else if std::io::stdin().is_terminal() {
+        confirm_remove_template(&name)?
+    } else {
+        eprintln!("Template '{name}' não removido: use --force ou execute em terminal interativo.");
+        false
+    };
+
+    if !should_remove {
+        return Err(anyhow::Error::new(TexError::UserAborted));
+    }
+
+    let removed_path = remove_template(dir, &name, true)?;
+    println!("Template '{name}' removido de {}.", removed_path.display());
+    Ok(())
+}
+
+pub fn handle_templates_menu() -> Result<()> {
+    use std::io::IsTerminal;
+
+    if !std::io::stdin().is_terminal() {
+        return Err(anyhow!(
+            "Menu interativo de templates requer terminal. Use um subcomando explícito: tex-cli templates list|show|add|remove."
+        ));
+    }
+
+    let path = config_file_path()?;
+    let cfg = Config::load(&path)?;
+    let dir = cfg.paths.templates_dir.clone();
+
+    match template_menu()? {
+        TemplateMenuAction::List => handle_templates_list(ShowFormat::Humano),
+        TemplateMenuAction::Show => {
+            let templates = list_templates(&dir)?;
+            let names: Vec<String> = templates.iter().map(|t| t.name.clone()).collect();
+            let chosen = prompt_template_name(&names)?;
+            handle_templates_show(chosen)
+        }
+        TemplateMenuAction::Add => {
+            let source_path = prompt_source_path()?;
+            let args = AddTemplateArgs {
+                source_path,
+                name: None,
+                force: false,
+            };
+            handle_templates_add(args)
+        }
+        TemplateMenuAction::Remove => {
+            let templates = list_templates(&dir)?;
+            let names: Vec<String> = templates.iter().map(|t| t.name.clone()).collect();
+            let chosen = prompt_template_name(&names)?;
+            handle_templates_remove(chosen, false)
+        }
+        TemplateMenuAction::Quit => Ok(()),
+    }
 }
 
 pub fn handle_config_set(key: String, value: String) -> Result<()> {

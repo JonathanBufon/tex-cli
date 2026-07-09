@@ -1,0 +1,37 @@
+% Template: carta
+% Carta formal simples em português.
+%
+% Inspirado no estilo ABNT usado em github.com/Eranot/Unotex (LPPL 1.3c).
+% Standalone, sem classe externa.
+
+\documentclass[12pt,a4paper]{letter}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazilian]{babel}
+\usepackage[left=3cm,right=2cm,top=3cm,bottom=2cm]{geometry}
+\usepackage{setspace}
+
+\onehalfspacing
+
+\signature{ {{ remetente | default(value="Nome do Remetente") }} \\
+           {{ cargo_remetente | default(value="Cargo / Instituição") }} }
+
+\address{ {{ endereco_remetente | default(value="Rua Exemplo, 123\\Cidade -- UF\\CEP 00000-000") }} }
+
+\begin{document}
+
+\begin{letter}{ {{ destinatario | default(value="Ao(À) Ilmo(a). Sr(a).\\Nome do Destinatário\\Cargo\\Endereço") }} }
+
+\opening{Prezado(a) {{ tratamento | default(value="Sr(a).") }} {{ nome_destinatario | default(value="Nome") }}, }
+
+{{ paragrafo_1 | default(value="Cumprimentando-o(a) cordialmente, apresento a razão desta correspondência.") }}
+
+{{ paragrafo_2 | default(value="Desenvolva aqui o pedido, comunicado ou informação principal, com objetividade.") }}
+
+{{ paragrafo_3 | default(value="Coloco-me à disposição para eventuais esclarecimentos e informações complementares.") }}
+
+\closing{Atenciosamente,}
+
+\end{letter}
+
+\end{document}

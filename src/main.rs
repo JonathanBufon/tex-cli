@@ -3,7 +3,7 @@ use std::process::ExitCode;
 use clap::Parser;
 use tracing::Level;
 
-use tex_cli::cli::{Cli, Commands, ConfigCmd};
+use tex_cli::cli::{Cli, Commands, ConfigCmd, TemplatesCmd};
 use tex_cli::errors::TexError;
 
 const BANNER: &str = include_str!("../assets/banner.txt");
@@ -20,6 +20,15 @@ fn main() -> ExitCode {
         Commands::Config(ConfigCmd::Set { key, value }) => {
             tex_cli::cli::handle_config_set(key, value)
         }
+        Commands::Templates(args) => match args.command {
+            Some(TemplatesCmd::List { format }) => tex_cli::cli::handle_templates_list(format),
+            Some(TemplatesCmd::Show { name }) => tex_cli::cli::handle_templates_show(name),
+            Some(TemplatesCmd::Add(add_args)) => tex_cli::cli::handle_templates_add(add_args),
+            Some(TemplatesCmd::Remove { name, force }) => {
+                tex_cli::cli::handle_templates_remove(name, force)
+            }
+            None => tex_cli::cli::handle_templates_menu(),
+        },
     };
 
     match outcome {
