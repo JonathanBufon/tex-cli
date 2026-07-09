@@ -3,7 +3,7 @@ use std::fs;
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 
-use crate::config::Config;
+use crate::config::{render_humano, Config};
 use crate::errors::TexError;
 use crate::interactive::{confirm_create_dir, confirm_overwrite, run_init_prompts};
 use crate::paths::config_file_path;
@@ -155,8 +155,21 @@ fn check_engine(engine: &str) {
     }
 }
 
-pub fn handle_config_show(_format: ShowFormat) -> Result<()> {
-    Err(anyhow!("handle_config_show: não implementado"))
+pub fn handle_config_show(format: ShowFormat) -> Result<()> {
+    let path = config_file_path()?;
+    let cfg = Config::load(&path)?;
+
+    let rendered = match format {
+        ShowFormat::Humano => render_humano(&cfg),
+        ShowFormat::Json => serde_json::to_string_pretty(&cfg)
+            .map_err(|e| anyhow!("falha ao serializar JSON: {e}"))?
+            + "\n",
+        ShowFormat::Toml => toml::to_string_pretty(&cfg)
+            .map_err(|e| anyhow!("falha ao serializar TOML: {e}"))?,
+    };
+
+    print!("{rendered}");
+    Ok(())
 }
 
 pub fn handle_config_set(_key: String, _value: String) -> Result<()> {

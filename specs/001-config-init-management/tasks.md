@@ -104,8 +104,8 @@ description: "Task list for feature 001-config-init-management"
 
 - [X] T020 [P] [US2] Implementar `Config::load(path: &Path) -> Result<Config, TexError>` em `src/config.rs`: `fs::read_to_string` → `TexError::ConfigMissing` se `NotFound`, `TexError::PermissionDenied` se `PermissionDenied`; `toml::from_str::<Config>` → `TexError::ConfigCorrupted { detail: e.to_string() }` em erro (extrair a mensagem humana do `toml::de::Error`, evitando debug format).
 - [X] T021 [P] [US2] Implementar `fn render_humano(c: &Config) -> String` em `src/config.rs`: agrupa por seção, alinha `chave = valor` com padding fixo. Sem cores nesta v1.
-- [ ] T022 [US2] Estender handler `handle_config_show(format: ShowFormat)` em `src/cli.rs`: `Config::load(config_file_path()?)?`, então match no format: `Humano` → `println!("{}", render_humano(&c))`, `Json` → `println!("{}", serde_json::to_string_pretty(&c)?)`, `Toml` → `println!("{}", toml::to_string_pretty(&c)?)`. Depende de T020, T021.
-- [ ] T023 [US2] Rodar `tests/cli_config_show.rs` e ajustar.
+- [X] T022 [US2] Estender handler `handle_config_show(format: ShowFormat)` em `src/cli.rs`: `Config::load(config_file_path()?)?`, então match no format: `Humano` → `println!("{}", render_humano(&c))`, `Json` → `println!("{}", serde_json::to_string_pretty(&c)?)`, `Toml` → `println!("{}", toml::to_string_pretty(&c)?)`. Depende de T020, T021.
+- [X] T023 [US2] Rodar `tests/cli_config_show.rs` e ajustar.
 
 **Checkpoint**: `tex-cli config show` funcional em três formatos. Scripts CI podem consumir `--format=json`.
 
