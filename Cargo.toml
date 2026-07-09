@@ -6,6 +6,10 @@ description = "cli tool to compile and export tex files to PDF"
 license-file = "LICENSE"
 repository = "https://github.com/JonathanBufon/tex-cli"
 
+[lib]
+name = "tex_cli"
+path = "src/lib.rs"
+
 [[bin]]
 name = "tex-cli"
 path = "src/main.rs"
