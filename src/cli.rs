@@ -7,9 +7,13 @@ use std::str::FromStr;
 
 use crate::config::{render_humano, Config, ConfigKey};
 use crate::errors::TexError;
-use crate::interactive::{confirm_create_dir, confirm_overwrite, run_init_prompts};
+use crate::interactive::{
+    confirm_create_dir, confirm_overwrite, confirm_overwrite_template, run_init_prompts,
+};
 use crate::paths::config_file_path;
-use crate::templates::{list_templates, read_template, render_template_list_humano};
+use crate::templates::{
+    add_template, list_templates, read_template, render_template_list_humano,
+};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -252,8 +256,57 @@ pub fn handle_templates_show(name: String) -> Result<()> {
     Ok(())
 }
 
-pub fn handle_templates_add(_args: AddTemplateArgs) -> Result<()> {
-    Err(anyhow!("handle_templates_add: não implementado"))
+pub fn handle_templates_add(args: AddTemplateArgs) -> Result<()> {
+    use std::io::IsTerminal;
+
+    let path = config_file_path()?;
+    let cfg = Config::load(&path)?;
+    let dir = &cfg.paths.templates_dir;
+
+    let dest_name = match &args.name {
+        Some(n) => n.clone(),
+        None => args
+            .source_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .ok_or_else(|| anyhow!("caminho do arquivo fonte inválido"))?
+            .to_string(),
+    };
+    let dest_path = dir.join(format!("{dest_name}.tex"));
+
+    let should_overwrite = if dest_path.exists() && !args.force {
+        if std::io::stdin().is_terminal() {
+            confirm_overwrite_template(&dest_name)?
+        } else {
+            false
+        }
+    } else {
+        true
+    };
+
+    if !should_overwrite {
+        return Err(anyhow::Error::new(TexError::UserAborted));
+    }
+
+    let outcome = add_template(
+        dir,
+        &args.source_path,
+        args.name.as_deref(),
+        args.force || should_overwrite,
+    )?;
+
+    let verb = if outcome.overwrote_existing {
+        "sobrescrito"
+    } else {
+        "adicionado"
+    };
+    println!(
+        "Template '{}' {} em {}.",
+        outcome.name,
+        verb,
+        outcome.path.display()
+    );
+    Ok(())
 }
 
 pub fn handle_templates_remove(_name: String, _force: bool) -> Result<()> {

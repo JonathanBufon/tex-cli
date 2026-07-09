@@ -1,10 +1,20 @@
 use std::fs;
+use std::io::Write;
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
 use serde::Serialize;
 
 use crate::errors::TexError;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AddedTemplate {
+    pub name: String,
+    pub path: PathBuf,
+    pub bytes_written: u64,
+    pub overwrote_existing: bool,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Template {
@@ -100,6 +110,101 @@ pub fn resolve_template(dir: &Path, name: &str) -> Result<PathBuf, TexError> {
             templates_dir: dir.to_path_buf(),
         })
     }
+}
+
+pub fn is_utf8_ok(bytes: &[u8]) -> Result<(), String> {
+    std::str::from_utf8(bytes)
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+pub fn add_template(
+    dir: &Path,
+    source: &Path,
+    name: Option<&str>,
+    force: bool,
+) -> Result<AddedTemplate, TexError> {
+    if !dir.exists() || !dir.is_dir() {
+        return Err(TexError::TemplatesDirMissing {
+            templates_dir: dir.to_path_buf(),
+        });
+    }
+
+    let bytes = fs::read(source).map_err(|e| match e.kind() {
+        std::io::ErrorKind::PermissionDenied => TexError::PermissionDenied {
+            path: source.to_path_buf(),
+        },
+        _ => TexError::Io(e),
+    })?;
+
+    if let Err(detail) = is_utf8_ok(&bytes) {
+        return Err(TexError::InvalidUtf8 {
+            source_path: source.to_path_buf(),
+            detail,
+        });
+    }
+
+    let dest_name = match name {
+        Some(n) => n.to_string(),
+        None => source
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .ok_or_else(|| {
+                TexError::Io(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    "source path has no usable file stem",
+                ))
+            })?
+            .to_string(),
+    };
+
+    let dest_path = dir.join(format!("{dest_name}.tex"));
+    let overwrote_existing = dest_path.exists();
+
+    if overwrote_existing && !force {
+        return Err(TexError::UserAborted);
+    }
+
+    write_atomic_0644(&dest_path, &bytes)?;
+
+    Ok(AddedTemplate {
+        name: dest_name,
+        path: dest_path,
+        bytes_written: bytes.len() as u64,
+        overwrote_existing,
+    })
+}
+
+fn write_atomic_0644(target: &Path, bytes: &[u8]) -> Result<(), TexError> {
+    let parent = target.parent().ok_or_else(|| {
+        TexError::Io(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "target has no parent dir",
+        ))
+    })?;
+
+    let mut tmp = tempfile::NamedTempFile::new_in(parent).map_err(|e| match e.kind() {
+        std::io::ErrorKind::PermissionDenied => TexError::PermissionDenied {
+            path: parent.to_path_buf(),
+        },
+        _ => TexError::Io(e),
+    })?;
+
+    tmp.as_file_mut().write_all(bytes)?;
+    tmp.as_file_mut().sync_all()?;
+
+    let mut perms = tmp.as_file().metadata()?.permissions();
+    perms.set_mode(0o644);
+    tmp.as_file().set_permissions(perms)?;
+
+    tmp.persist(target).map_err(|e| match e.error.kind() {
+        std::io::ErrorKind::PermissionDenied => TexError::PermissionDenied {
+            path: target.to_path_buf(),
+        },
+        _ => TexError::Io(e.error),
+    })?;
+
+    Ok(())
 }
 
 pub fn read_template(dir: &Path, name: &str) -> Result<Vec<u8>, TexError> {
@@ -360,6 +465,93 @@ mod tests {
         let missing = PathBuf::from("/definitely/not/here/tex-cli");
         let err = resolve_template(&missing, "anything").unwrap_err();
         assert!(matches!(err, TexError::TemplatesDirMissing { .. }));
+    }
+
+    #[test]
+    fn is_utf8_ok_accepts_ascii() {
+        assert!(is_utf8_ok(b"hello world\n").is_ok());
+    }
+
+    #[test]
+    fn is_utf8_ok_accepts_multibyte() {
+        assert!(is_utf8_ok("olá, mundo — 🚀".as_bytes()).is_ok());
+    }
+
+    #[test]
+    fn is_utf8_ok_rejects_invalid_continuation() {
+        assert!(is_utf8_ok(&[0xFFu8, 0xFEu8, 0xFDu8]).is_err());
+    }
+
+    #[test]
+    fn add_template_creates_new_with_0644() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("src.tex");
+        std::fs::write(&source, b"% content\n").unwrap();
+        let templates = tmp.path().join("dest");
+        std::fs::create_dir(&templates).unwrap();
+
+        let outcome = add_template(&templates, &source, None, false).unwrap();
+        assert_eq!(outcome.name, "src");
+        assert!(!outcome.overwrote_existing);
+        assert_eq!(outcome.bytes_written, 10);
+
+        let mode = std::fs::metadata(&outcome.path).unwrap().permissions().mode();
+        assert_eq!(mode & 0o777, 0o644);
+    }
+
+    #[test]
+    fn add_template_binary_returns_invalid_utf8() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("bin.tex");
+        std::fs::write(&source, &[0xFFu8, 0xFEu8]).unwrap();
+        let templates = tmp.path().join("dest");
+        std::fs::create_dir(&templates).unwrap();
+
+        let err = add_template(&templates, &source, None, false).unwrap_err();
+        assert!(matches!(err, TexError::InvalidUtf8 { .. }));
+        assert!(!templates.join("bin.tex").exists());
+    }
+
+    #[test]
+    fn add_template_existing_without_force_aborts() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("src.tex");
+        std::fs::write(&source, b"new").unwrap();
+        let templates = tmp.path().join("dest");
+        std::fs::create_dir(&templates).unwrap();
+        std::fs::write(templates.join("src.tex"), b"old").unwrap();
+
+        let err = add_template(&templates, &source, None, false).unwrap_err();
+        assert!(matches!(err, TexError::UserAborted));
+        assert_eq!(std::fs::read(templates.join("src.tex")).unwrap(), b"old");
+    }
+
+    #[test]
+    fn add_template_force_overwrites() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("src.tex");
+        std::fs::write(&source, b"new").unwrap();
+        let templates = tmp.path().join("dest");
+        std::fs::create_dir(&templates).unwrap();
+        std::fs::write(templates.join("src.tex"), b"old").unwrap();
+
+        let outcome = add_template(&templates, &source, None, true).unwrap();
+        assert!(outcome.overwrote_existing);
+        assert_eq!(std::fs::read(&outcome.path).unwrap(), b"new");
+    }
+
+    #[test]
+    fn add_template_custom_name() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("src.tex");
+        std::fs::write(&source, b"body").unwrap();
+        let templates = tmp.path().join("dest");
+        std::fs::create_dir(&templates).unwrap();
+
+        let outcome = add_template(&templates, &source, Some("outro"), false).unwrap();
+        assert_eq!(outcome.name, "outro");
+        assert!(templates.join("outro.tex").exists());
+        assert!(!templates.join("src.tex").exists());
     }
 
     #[test]
