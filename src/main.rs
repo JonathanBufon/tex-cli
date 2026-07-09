@@ -15,7 +15,7 @@ fn main() -> ExitCode {
     eprint!("{BANNER}");
 
     let outcome = match cli.command {
-        Commands::Init => tex_cli::cli::handle_init(),
+        Commands::Init(args) => tex_cli::cli::handle_init(args),
         Commands::Config(ConfigCmd::Show { format }) => tex_cli::cli::handle_config_show(format),
         Commands::Config(ConfigCmd::Set { key, value }) => {
             tex_cli::cli::handle_config_set(key, value)

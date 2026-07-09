@@ -30,12 +30,35 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
-    /// Cria o config em ~/.config/tex/config.toml de forma interativa.
-    Init,
+    /// Cria o config em ~/.config/tex/config.toml (interativo ou via flags).
+    Init(InitArgs),
 
     /// Inspeciona ou altera o config atual.
     #[command(subcommand)]
     Config(ConfigCmd),
+}
+
+#[derive(Debug, clap::Args)]
+pub struct InitArgs {
+    /// Diretório de templates LaTeX (pula o prompt correspondente).
+    #[arg(short = 't', long)]
+    pub templates_dir: Option<String>,
+
+    /// Diretório padrão de saída dos PDFs (pula o prompt correspondente).
+    #[arg(short = 'o', long)]
+    pub output_dir: Option<String>,
+
+    /// Nome do engine LaTeX (`tectonic`, `latexmk`, `pdflatex`, `xelatex`, `lualatex`).
+    #[arg(short = 'e', long)]
+    pub engine: Option<String>,
+
+    /// Cria diretórios ausentes sem pedir confirmação.
+    #[arg(long)]
+    pub create_dirs: bool,
+
+    /// Sobrescreve config existente sem pedir confirmação.
+    #[arg(long)]
+    pub force: bool,
 }
 
 #[derive(Debug, Subcommand)]
@@ -57,39 +80,61 @@ pub enum ShowFormat {
     Toml,
 }
 
-pub fn handle_init() -> Result<()> {
+pub fn handle_init(args: InitArgs) -> Result<()> {
     let config_path = config_file_path()?;
 
     if config_path.exists() {
-        let ok = confirm_overwrite(&config_path)?;
+        let ok = if args.force {
+            true
+        } else {
+            confirm_overwrite(&config_path)?
+        };
         if !ok {
             return Err(anyhow::Error::new(TexError::UserAborted));
         }
     }
 
-    let answers = run_init_prompts()?;
+    let (templates_dir, output_dir, engine) = resolve_answers(&args)?;
 
-    ensure_dir(&answers.templates_dir)?;
-    ensure_dir(&answers.output_dir)?;
+    ensure_dir(&templates_dir, args.create_dirs)?;
+    ensure_dir(&output_dir, args.create_dirs)?;
 
-    check_engine(&answers.engine);
+    check_engine(&engine);
 
-    let cfg = Config::new_from_prompts(
-        answers.templates_dir,
-        answers.output_dir,
-        answers.engine,
-    );
+    let cfg = Config::new_from_prompts(templates_dir, output_dir, engine);
     cfg.save_atomic(&config_path)?;
 
     println!("Config gravado em: {}", config_path.display());
     Ok(())
 }
 
-fn ensure_dir(path: &std::path::Path) -> Result<()> {
+fn resolve_answers(
+    args: &InitArgs,
+) -> Result<(std::path::PathBuf, std::path::PathBuf, String)> {
+    let fully_specified = args.templates_dir.is_some()
+        && args.output_dir.is_some()
+        && args.engine.is_some();
+
+    if fully_specified {
+        let templates = crate::paths::expand_user_path(args.templates_dir.as_ref().unwrap())?;
+        let output = crate::paths::expand_user_path(args.output_dir.as_ref().unwrap())?;
+        let engine = args.engine.as_ref().unwrap().clone();
+        return Ok((templates, output, engine));
+    }
+
+    let answers = run_init_prompts()?;
+    Ok((answers.templates_dir, answers.output_dir, answers.engine))
+}
+
+fn ensure_dir(path: &std::path::Path, create_flag: bool) -> Result<()> {
     if path.exists() {
         return Ok(());
     }
-    let ok = confirm_create_dir(path)?;
+    let ok = if create_flag {
+        true
+    } else {
+        confirm_create_dir(path)?
+    };
     if !ok {
         return Err(anyhow::Error::new(TexError::UserAborted));
     }

@@ -22,19 +22,15 @@ fn init_cmd(home: &TempDir) -> Command {
     cmd
 }
 
-fn valid_stdin(templates: &str, output: &str, engine_index: u8) -> String {
-    let mut input = String::new();
-    input.push_str(templates);
-    input.push('\n');
-    input.push_str(output);
-    input.push('\n');
-    // inquire Select navigation: `engine_index` down-arrows then enter.
-    // 0 = tectonic (default), so just enter.
-    for _ in 0..engine_index {
-        input.push_str("\x1b[B");
-    }
-    input.push('\n');
-    input
+fn init_args(cmd: &mut Command, templates: &std::path::Path, output: &std::path::Path, engine: &str) {
+    cmd.args([
+        "--templates-dir",
+        templates.to_str().unwrap(),
+        "--output-dir",
+        output.to_str().unwrap(),
+        "--engine",
+        engine,
+    ]);
 }
 
 #[test]
@@ -45,16 +41,9 @@ fn init_creates_config_with_valid_answers() {
     std::fs::create_dir_all(&templates).unwrap();
     std::fs::create_dir_all(&output).unwrap();
 
-    let stdin = valid_stdin(
-        templates.to_str().unwrap(),
-        output.to_str().unwrap(),
-        0, // tectonic
-    );
-
-    init_cmd(&home)
-        .write_stdin(stdin)
-        .assert()
-        .success();
+    let mut cmd = init_cmd(&home);
+    init_args(&mut cmd, &templates, &output, "tectonic");
+    cmd.assert().success();
 
     let cfg = config_path(&home);
     assert!(cfg.exists(), "config file should be created at {cfg:?}");
@@ -69,7 +58,7 @@ fn init_creates_config_with_valid_answers() {
 }
 
 #[test]
-fn init_refuses_overwrite_without_confirmation() {
+fn init_refuses_overwrite_without_force() {
     let home = TempDir::new().unwrap();
     let cfg = config_path(&home);
     std::fs::create_dir_all(cfg.parent().unwrap()).unwrap();
@@ -77,40 +66,56 @@ fn init_refuses_overwrite_without_confirmation() {
     f.write_all(b"original content untouched\n").unwrap();
     let before = std::fs::read(&cfg).unwrap();
 
-    // Respond "n" (no) to the overwrite confirmation.
-    init_cmd(&home)
-        .write_stdin("n\n")
-        .assert()
-        .failure()
-        .code(15);
+    let templates = home.path().join("t");
+    let output = home.path().join("o");
+    std::fs::create_dir_all(&templates).unwrap();
+    std::fs::create_dir_all(&output).unwrap();
+
+    // No `--force` flag on a non-TTY invocation → inquire fails to
+    // produce a confirm, which maps to a runtime error. The file must
+    // stay untouched either way.
+    let mut cmd = init_cmd(&home);
+    init_args(&mut cmd, &templates, &output, "tectonic");
+    cmd.assert().failure();
 
     let after = std::fs::read(&cfg).unwrap();
     assert_eq!(before, after, "config file should be untouched byte-for-byte");
 }
 
 #[test]
-fn init_prompts_to_create_missing_templates_dir() {
+fn init_force_overwrites_existing_config() {
+    let home = TempDir::new().unwrap();
+    let cfg = config_path(&home);
+    std::fs::create_dir_all(cfg.parent().unwrap()).unwrap();
+    std::fs::write(&cfg, "original content").unwrap();
+
+    let templates = home.path().join("t");
+    let output = home.path().join("o");
+    std::fs::create_dir_all(&templates).unwrap();
+    std::fs::create_dir_all(&output).unwrap();
+
+    let mut cmd = init_cmd(&home);
+    init_args(&mut cmd, &templates, &output, "tectonic");
+    cmd.arg("--force").assert().success();
+
+    let contents = std::fs::read_to_string(&cfg).unwrap();
+    assert!(contents.contains("tectonic"));
+    assert!(!contents.contains("original content"));
+}
+
+#[test]
+fn init_create_dirs_creates_missing_templates_dir() {
     let home = TempDir::new().unwrap();
     let templates = home.path().join("nested").join("templates");
     let output = home.path().join("output");
     std::fs::create_dir_all(&output).unwrap();
-    // templates does NOT exist yet.
 
-    // Answers: templates path, "y" to create dir, output path, engine.
-    let mut stdin = String::new();
-    stdin.push_str(templates.to_str().unwrap());
-    stdin.push('\n');
-    stdin.push_str("y\n"); // confirm create templates dir
-    stdin.push_str(output.to_str().unwrap());
-    stdin.push('\n');
-    stdin.push('\n'); // pick default (tectonic)
-
-    init_cmd(&home)
-        .write_stdin(stdin)
-        .assert()
-        .success();
+    let mut cmd = init_cmd(&home);
+    init_args(&mut cmd, &templates, &output, "tectonic");
+    cmd.arg("--create-dirs").assert().success();
 
     assert!(templates.exists(), "templates dir should have been created");
+    assert!(config_path(&home).exists());
 }
 
 #[test]
@@ -121,21 +126,15 @@ fn init_warns_but_persists_when_tectonic_missing() {
     std::fs::create_dir_all(&templates).unwrap();
     std::fs::create_dir_all(&output).unwrap();
 
-    let stdin = valid_stdin(
-        templates.to_str().unwrap(),
-        output.to_str().unwrap(),
-        0,
-    );
-
     let mut cmd = Command::cargo_bin(BIN).expect("binary built");
     cmd.env_clear();
     cmd.env("HOME", home.path());
     cmd.env("XDG_CONFIG_HOME", home.path().join(".config"));
     cmd.env("PATH", "/tmp/empty-path-for-test"); // no tectonic here
     cmd.arg("init");
+    init_args(&mut cmd, &templates, &output, "tectonic");
 
-    cmd.write_stdin(stdin)
-        .assert()
+    cmd.assert()
         .success()
         .stderr(predicate::str::contains("tectonic").and(predicate::str::contains("não foi encontrado")));
 
@@ -151,18 +150,14 @@ fn init_banner_in_stderr_never_stdout() {
     std::fs::create_dir_all(&templates).unwrap();
     std::fs::create_dir_all(&output).unwrap();
 
-    let stdin = valid_stdin(
-        templates.to_str().unwrap(),
-        output.to_str().unwrap(),
-        0,
-    );
-
-    let assert = init_cmd(&home).write_stdin(stdin).assert();
+    let mut cmd = init_cmd(&home);
+    init_args(&mut cmd, &templates, &output, "tectonic");
+    let assert = cmd.assert();
     let output_ = assert.get_output();
     let stdout = String::from_utf8_lossy(&output_.stdout);
     let stderr = String::from_utf8_lossy(&output_.stderr);
 
-    assert!(stderr.contains("TEX") || stderr.contains("T"), "banner glyphs expected in stderr");
-    assert!(!stdout.contains("TEX CLI"), "banner literal must not appear on stdout");
+    assert!(stderr.contains("╗") || stderr.contains("█"), "banner glyphs expected in stderr");
     assert!(!stdout.contains("╔") && !stdout.contains("╗"), "banner box-drawing glyphs must not appear on stdout");
+    assert!(!stdout.contains("████"), "banner block glyphs must not appear on stdout");
 }
