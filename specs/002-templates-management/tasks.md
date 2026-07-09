@@ -31,7 +31,7 @@ description: "Task list for feature 002-templates-management"
 
 **Purpose**: Confirmar que a base da spec 001 permanece intacta e que nenhuma nova dep é necessária.
 
-- [ ] T001 Verificar que a branch atual é `002-templates-management` e que o `Cargo.toml` não precisa de mudanças (research D-01: zero nova dep). Rodar `cargo check --all` no container Docker (`docker run --rm -v $(pwd):/src -w /src tex-cli cargo check --all`) para confirmar que o estado herdado da spec 001 compila limpo.
+- [X] T001 Verificar que a branch atual é `002-templates-management` e que o `Cargo.toml` não precisa de mudanças (research D-01: zero nova dep). Rodar `cargo check --all` no container Docker (`docker run --rm -v $(pwd):/src -w /src tex-cli cargo check --all`) para confirmar que o estado herdado da spec 001 compila limpo.
 
 **Checkpoint**: base pronta. `cargo check --all` passa sem warnings.
 
