@@ -9,7 +9,7 @@ use crate::config::{render_humano, Config, ConfigKey};
 use crate::errors::TexError;
 use crate::interactive::{
     confirm_create_dir, confirm_overwrite, confirm_overwrite_template, confirm_remove_template,
-    run_init_prompts,
+    prompt_source_path, prompt_template_name, run_init_prompts, template_menu, TemplateMenuAction,
 };
 use crate::paths::config_file_path;
 use crate::templates::{
@@ -342,7 +342,43 @@ pub fn handle_templates_remove(name: String, force: bool) -> Result<()> {
 }
 
 pub fn handle_templates_menu() -> Result<()> {
-    Err(anyhow!("handle_templates_menu: não implementado"))
+    use std::io::IsTerminal;
+
+    if !std::io::stdin().is_terminal() {
+        return Err(anyhow!(
+            "Menu interativo de templates requer terminal. Use um subcomando explícito: tex-cli templates list|show|add|remove."
+        ));
+    }
+
+    let path = config_file_path()?;
+    let cfg = Config::load(&path)?;
+    let dir = cfg.paths.templates_dir.clone();
+
+    match template_menu()? {
+        TemplateMenuAction::List => handle_templates_list(ShowFormat::Humano),
+        TemplateMenuAction::Show => {
+            let templates = list_templates(&dir)?;
+            let names: Vec<String> = templates.iter().map(|t| t.name.clone()).collect();
+            let chosen = prompt_template_name(&names)?;
+            handle_templates_show(chosen)
+        }
+        TemplateMenuAction::Add => {
+            let source_path = prompt_source_path()?;
+            let args = AddTemplateArgs {
+                source_path,
+                name: None,
+                force: false,
+            };
+            handle_templates_add(args)
+        }
+        TemplateMenuAction::Remove => {
+            let templates = list_templates(&dir)?;
+            let names: Vec<String> = templates.iter().map(|t| t.name.clone()).collect();
+            let chosen = prompt_template_name(&names)?;
+            handle_templates_remove(chosen, false)
+        }
+        TemplateMenuAction::Quit => Ok(()),
+    }
 }
 
 pub fn handle_config_set(key: String, value: String) -> Result<()> {

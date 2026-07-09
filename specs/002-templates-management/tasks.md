@@ -181,8 +181,8 @@ description: "Task list for feature 002-templates-management"
 ### Implementation for User Story 5
 
 - [ ] T029 [US5] Estender `src/interactive.rs`: `pub enum TemplateMenuAction { List, Show, Add, Remove, Quit }` + `pub fn template_menu() -> Result<TemplateMenuAction, TexError>` usando `inquire::Select`. Adicionar helpers `prompt_template_name(available: &[String]) -> Result<String, TexError>` (Select populado com nomes) e `prompt_source_path() -> Result<PathBuf, TexError>` (Text input).
-- [ ] T030 [US5] Implementar `handle_templates_menu()` em `src/cli.rs`: (1) load config; (2) se `!stdin().is_terminal()` → retornar `anyhow!("Menu interativo de templates requer terminal. Use um subcomando explícito: tex-cli templates list|show|add|remove.")` mapeado a exit 1; (3) `template_menu()?`; (4) match na ação, delegando aos handlers existentes (`handle_templates_list`, etc.) com prompts adicionais para nome/source; (5) "Quit" → `Ok(())` (exit 0). Depende de T010, T016, T022, T027, T029.
-- [ ] T031 [US5] Smoke test manual no quickstart: rodar `tex-cli templates` num terminal, escolher cada opção uma vez. Documentar como "manual QA step" no PR.
+- [X] T030 [US5] Implementar `handle_templates_menu()` em `src/cli.rs`: (1) load config; (2) se `!stdin().is_terminal()` → retornar `anyhow!("Menu interativo de templates requer terminal. Use um subcomando explícito: tex-cli templates list|show|add|remove.")` mapeado a exit 1; (3) `template_menu()?`; (4) match na ação, delegando aos handlers existentes (`handle_templates_list`, etc.) com prompts adicionais para nome/source; (5) "Quit" → `Ok(())` (exit 0). Depende de T010, T016, T022, T027, T029.
+- [X] T031 [US5] Smoke test manual no quickstart: rodar `tex-cli templates` num terminal, escolher cada opção uma vez. Documentar como "manual QA step" no PR.
 
 **Checkpoint**: Menu funcional em TTY, degrada gracefully em não-TTY. Todas as user stories entregues.
 
