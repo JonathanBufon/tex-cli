@@ -125,7 +125,7 @@ description: "Task list for feature 002-templates-management"
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T018 [P] [US3] Criar `tests/cli_templates_add.rs`:
+- [X] T018 [P] [US3] Criar `tests/cli_templates_add.rs`:
   - `add_creates_template_from_source`: source no `TempDir` externo, exec `add`, valida arquivo criado com conteúdo idêntico + modo `0644`.
   - `add_with_name_uses_custom_name`: `add /tmp/x.tex --name y` → arquivo salvo como `y.tex`.
   - `add_binary_source_exits_21`: `head -c 100 /dev/urandom` como source → exit 21, stderr contém `UTF-8`, arquivo NÃO criado no destino.
