@@ -1,6 +1,11 @@
-use std::path::PathBuf;
+use std::fs;
+use std::io::Write;
+use std::os::unix::fs::PermissionsExt;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
+
+use crate::errors::TexError;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -56,6 +61,39 @@ impl Config {
                 ask_output_path_every_time: DEFAULT_ASK_OUTPUT_PATH_EVERY_TIME,
             },
         }
+    }
+
+    pub fn save_atomic(&self, target: &Path) -> Result<(), TexError> {
+        let parent = target.parent().ok_or_else(|| TexError::Io(
+            std::io::Error::new(std::io::ErrorKind::InvalidInput, "target has no parent dir"),
+        ))?;
+        fs::create_dir_all(parent)?;
+
+        let serialized = toml::to_string_pretty(self).map_err(|e| {
+            TexError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))
+        })?;
+
+        let mut tmp = tempfile::NamedTempFile::new_in(parent).map_err(|e| match e.kind() {
+            std::io::ErrorKind::PermissionDenied => TexError::PermissionDenied {
+                path: parent.to_path_buf(),
+            },
+            _ => TexError::Io(e),
+        })?;
+        tmp.as_file_mut().write_all(serialized.as_bytes())?;
+        tmp.as_file_mut().sync_all()?;
+
+        let mut perms = tmp.as_file().metadata()?.permissions();
+        perms.set_mode(0o600);
+        tmp.as_file().set_permissions(perms)?;
+
+        tmp.persist(target).map_err(|e| match e.error.kind() {
+            std::io::ErrorKind::PermissionDenied => TexError::PermissionDenied {
+                path: target.to_path_buf(),
+            },
+            _ => TexError::Io(e.error),
+        })?;
+
+        Ok(())
     }
 }
 
