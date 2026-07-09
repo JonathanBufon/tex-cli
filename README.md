@@ -79,6 +79,41 @@ Chaves aceitas (dotted-path canônico, sem aliases):
 - `compiler.keep_logs`
 - `behavior.ask_output_path_every_time`
 
+### Gerenciar templates
+
+O grupo `templates` administra os arquivos `.tex` que ficam em
+`paths.templates_dir`.
+
+```bash
+tex-cli templates list                     # padrão: humano
+tex-cli templates list --format json       # pipe direto pro jq
+
+tex-cli templates show artigo              # bytes brutos em stdout
+tex-cli templates show artigo.tex          # extensão opcional
+
+tex-cli templates add /tmp/novo.tex                  # basename → novo
+tex-cli templates add /tmp/x.tex --name relatorio    # nome custom
+tex-cli templates add /tmp/x.tex --force             # sobrescreve
+
+tex-cli templates remove artigo --force    # remove sem prompt
+
+tex-cli templates                          # menu interativo (TTY)
+```
+
+Contratos importantes:
+
+- `list --format json` produz JSON válido para pipe em `jq` (mesmo
+  com diretório vazio → `[]`).
+- Cada template carrega `modified_at_epoch` (segundos desde
+  UNIX_EPOCH); use `jq '... | strftime("%Y-%m-%dT%H:%M:%SZ")'` para
+  formatar em RFC3339.
+- `add` valida UTF-8 antes de gravar e faz escrita atômica com
+  permissão `0644` (compartilhável via git, ao contrário do config).
+- `remove` exige `--force` ou confirmação em terminal interativo.
+
+Exemplos curados de templates estão em [`examples/templates/`](examples/templates/)
+com atribuição ao autor original.
+
 ### Verbosidade
 
 Flag global `-v` repetível em qualquer subcomando:
@@ -104,6 +139,9 @@ Logs vão sempre para stderr; stdout fica limpo para pipes.
 | 13     | Valor inválido (ex.: bool malformado) |
 | 14     | Permissão negada ao gravar            |
 | 15     | Usuário abortou operação interativa   |
+| 20     | Template não existe (`show`/`remove`) |
+| 21     | Arquivo do `add` não é UTF-8 válido   |
+| 22     | `paths.templates_dir` inexistente     |
 
 ## Desenvolvimento
 
