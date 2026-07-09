@@ -128,6 +128,24 @@ impl FromStr for ConfigKey {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AppliedChange {
+    pub key: ConfigKey,
+    pub normalized_value: String,
+    pub warnings: Vec<String>,
+}
+
+fn parse_strict_bool(key: &ConfigKey, raw: &str) -> Result<bool, TexError> {
+    match raw {
+        "true" => Ok(true),
+        "false" => Ok(false),
+        _ => Err(TexError::InvalidBoolValue {
+            key: key.to_string(),
+            value: raw.to_string(),
+        }),
+    }
+}
+
 pub const DEFAULT_ENGINE: &str = "tectonic";
 pub const DEFAULT_KEEP_TEX: bool = true;
 pub const DEFAULT_KEEP_LOGS: bool = true;
@@ -167,6 +185,97 @@ impl Config {
             behavior: BehaviorConfig {
                 ask_output_path_every_time: DEFAULT_ASK_OUTPUT_PATH_EVERY_TIME,
             },
+        }
+    }
+
+    pub fn apply(
+        &mut self,
+        key: ConfigKey,
+        raw_value: &str,
+    ) -> Result<AppliedChange, TexError> {
+        match key {
+            ConfigKey::PathsTemplatesDir => {
+                let expanded = crate::paths::expand_user_path(raw_value)?;
+                let mut warnings = Vec::new();
+                if !expanded.exists() {
+                    warnings.push(format!(
+                        "Aviso: '{}' não existe no momento.",
+                        expanded.display()
+                    ));
+                }
+                self.paths.templates_dir = expanded.clone();
+                Ok(AppliedChange {
+                    key,
+                    normalized_value: expanded.display().to_string(),
+                    warnings,
+                })
+            }
+            ConfigKey::PathsOutputDir => {
+                let expanded = crate::paths::expand_user_path(raw_value)?;
+                let mut warnings = Vec::new();
+                if !expanded.exists() {
+                    warnings.push(format!(
+                        "Aviso: '{}' não existe no momento.",
+                        expanded.display()
+                    ));
+                }
+                self.paths.output_dir = expanded.clone();
+                Ok(AppliedChange {
+                    key,
+                    normalized_value: expanded.display().to_string(),
+                    warnings,
+                })
+            }
+            ConfigKey::CompilerEngine => {
+                if raw_value.trim().is_empty() {
+                    return Err(TexError::InvalidBoolValue {
+                        key: key.to_string(),
+                        value: raw_value.to_string(),
+                    });
+                }
+                let mut warnings = Vec::new();
+                if raw_value != "tectonic" {
+                    warnings.push(format!(
+                        "Aviso: engine '{raw_value}' ainda não é executada pelo Tex nesta versão. A preferência foi salva."
+                    ));
+                }
+                if which::which(raw_value).is_err() {
+                    warnings.push(format!("Aviso: '{raw_value}' não está no PATH."));
+                }
+                self.compiler.engine = raw_value.to_string();
+                Ok(AppliedChange {
+                    key,
+                    normalized_value: raw_value.to_string(),
+                    warnings,
+                })
+            }
+            ConfigKey::CompilerKeepTex => {
+                let parsed = parse_strict_bool(&key, raw_value)?;
+                self.compiler.keep_tex = parsed;
+                Ok(AppliedChange {
+                    key,
+                    normalized_value: parsed.to_string(),
+                    warnings: Vec::new(),
+                })
+            }
+            ConfigKey::CompilerKeepLogs => {
+                let parsed = parse_strict_bool(&key, raw_value)?;
+                self.compiler.keep_logs = parsed;
+                Ok(AppliedChange {
+                    key,
+                    normalized_value: parsed.to_string(),
+                    warnings: Vec::new(),
+                })
+            }
+            ConfigKey::BehaviorAskOutputPathEveryTime => {
+                let parsed = parse_strict_bool(&key, raw_value)?;
+                self.behavior.ask_output_path_every_time = parsed;
+                Ok(AppliedChange {
+                    key,
+                    normalized_value: parsed.to_string(),
+                    warnings: Vec::new(),
+                })
+            }
         }
     }
 
