@@ -110,12 +110,9 @@ pub fn handle_init(args: InitArgs) -> Result<()> {
     Ok(())
 }
 
-fn resolve_answers(
-    args: &InitArgs,
-) -> Result<(std::path::PathBuf, std::path::PathBuf, String)> {
-    let fully_specified = args.templates_dir.is_some()
-        && args.output_dir.is_some()
-        && args.engine.is_some();
+fn resolve_answers(args: &InitArgs) -> Result<(std::path::PathBuf, std::path::PathBuf, String)> {
+    let fully_specified =
+        args.templates_dir.is_some() && args.output_dir.is_some() && args.engine.is_some();
 
     if fully_specified {
         let templates = crate::paths::expand_user_path(args.templates_dir.as_ref().unwrap())?;
@@ -163,11 +160,14 @@ pub fn handle_config_show(format: ShowFormat) -> Result<()> {
 
     let rendered = match format {
         ShowFormat::Humano => render_humano(&cfg),
-        ShowFormat::Json => serde_json::to_string_pretty(&cfg)
-            .map_err(|e| anyhow!("falha ao serializar JSON: {e}"))?
-            + "\n",
-        ShowFormat::Toml => toml::to_string_pretty(&cfg)
-            .map_err(|e| anyhow!("falha ao serializar TOML: {e}"))?,
+        ShowFormat::Json => {
+            serde_json::to_string_pretty(&cfg)
+                .map_err(|e| anyhow!("falha ao serializar JSON: {e}"))?
+                + "\n"
+        }
+        ShowFormat::Toml => {
+            toml::to_string_pretty(&cfg).map_err(|e| anyhow!("falha ao serializar TOML: {e}"))?
+        }
     };
 
     print!("{rendered}");

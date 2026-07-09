@@ -47,14 +47,11 @@ fn show_humano_prints_all_sections() {
     let home = TempDir::new().unwrap();
     write_valid_config(&home);
 
-    show_cmd(&home)
-        .assert()
-        .success()
-        .stdout(
-            predicate::str::contains("paths")
-                .and(predicate::str::contains("compiler"))
-                .and(predicate::str::contains("behavior")),
-        );
+    show_cmd(&home).assert().success().stdout(
+        predicate::str::contains("paths")
+            .and(predicate::str::contains("compiler"))
+            .and(predicate::str::contains("behavior")),
+    );
 }
 
 #[test]
@@ -62,10 +59,7 @@ fn show_format_json_is_valid_and_pipeable() {
     let home = TempDir::new().unwrap();
     write_valid_config(&home);
 
-    let output = show_cmd(&home)
-        .args(["--format", "json"])
-        .output()
-        .unwrap();
+    let output = show_cmd(&home).args(["--format", "json"]).output().unwrap();
     assert!(output.status.success());
 
     let stdout = String::from_utf8(output.stdout).unwrap();
@@ -78,16 +72,16 @@ fn show_format_toml_roundtrips() {
     let home = TempDir::new().unwrap();
     write_valid_config(&home);
 
-    let output = show_cmd(&home)
-        .args(["--format", "toml"])
-        .output()
-        .unwrap();
+    let output = show_cmd(&home).args(["--format", "toml"]).output().unwrap();
     assert!(output.status.success());
 
     let stdout = String::from_utf8(output.stdout).unwrap();
     let parsed: toml::Value = toml::from_str(&stdout).expect("stdout is valid TOML");
     assert_eq!(parsed["compiler"]["engine"].as_str(), Some("tectonic"));
-    assert_eq!(parsed["paths"]["templates_dir"].as_str(), Some("/tmp/templates"));
+    assert_eq!(
+        parsed["paths"]["templates_dir"].as_str(),
+        Some("/tmp/templates")
+    );
 }
 
 #[test]

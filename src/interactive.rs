@@ -57,6 +57,6 @@ fn map_inquire_err(err: InquireError) -> TexError {
             TexError::UserAborted
         }
         InquireError::IO(e) => TexError::Io(e),
-        other => TexError::Io(std::io::Error::new(std::io::ErrorKind::Other, other.to_string())),
+        other => TexError::Io(std::io::Error::other(other.to_string())),
     }
 }

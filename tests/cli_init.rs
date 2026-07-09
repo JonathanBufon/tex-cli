@@ -22,7 +22,12 @@ fn init_cmd(home: &TempDir) -> Command {
     cmd
 }
 
-fn init_args(cmd: &mut Command, templates: &std::path::Path, output: &std::path::Path, engine: &str) {
+fn init_args(
+    cmd: &mut Command,
+    templates: &std::path::Path,
+    output: &std::path::Path,
+    engine: &str,
+) {
     cmd.args([
         "--templates-dir",
         templates.to_str().unwrap(),
@@ -54,7 +59,12 @@ fn init_creates_config_with_valid_answers() {
     assert!(contents.contains("tectonic"));
 
     let mode = std::fs::metadata(&cfg).unwrap().permissions().mode();
-    assert_eq!(mode & 0o777, 0o600, "config mode should be 0600, got {:o}", mode & 0o777);
+    assert_eq!(
+        mode & 0o777,
+        0o600,
+        "config mode should be 0600, got {:o}",
+        mode & 0o777
+    );
 }
 
 #[test]
@@ -79,7 +89,10 @@ fn init_refuses_overwrite_without_force() {
     cmd.assert().failure();
 
     let after = std::fs::read(&cfg).unwrap();
-    assert_eq!(before, after, "config file should be untouched byte-for-byte");
+    assert_eq!(
+        before, after,
+        "config file should be untouched byte-for-byte"
+    );
 }
 
 #[test]
@@ -134,12 +147,15 @@ fn init_warns_but_persists_when_tectonic_missing() {
     cmd.arg("init");
     init_args(&mut cmd, &templates, &output, "tectonic");
 
-    cmd.assert()
-        .success()
-        .stderr(predicate::str::contains("tectonic").and(predicate::str::contains("não foi encontrado")));
+    cmd.assert().success().stderr(
+        predicate::str::contains("tectonic").and(predicate::str::contains("não foi encontrado")),
+    );
 
     let cfg = config_path(&home);
-    assert!(cfg.exists(), "config should still be written despite missing tectonic");
+    assert!(
+        cfg.exists(),
+        "config should still be written despite missing tectonic"
+    );
 }
 
 #[test]
@@ -157,7 +173,16 @@ fn init_banner_in_stderr_never_stdout() {
     let stdout = String::from_utf8_lossy(&output_.stdout);
     let stderr = String::from_utf8_lossy(&output_.stderr);
 
-    assert!(stderr.contains("╗") || stderr.contains("█"), "banner glyphs expected in stderr");
-    assert!(!stdout.contains("╔") && !stdout.contains("╗"), "banner box-drawing glyphs must not appear on stdout");
-    assert!(!stdout.contains("████"), "banner block glyphs must not appear on stdout");
+    assert!(
+        stderr.contains("╗") || stderr.contains("█"),
+        "banner glyphs expected in stderr"
+    );
+    assert!(
+        !stdout.contains("╔") && !stdout.contains("╗"),
+        "banner box-drawing glyphs must not appear on stdout"
+    );
+    assert!(
+        !stdout.contains("████"),
+        "banner block glyphs must not appear on stdout"
+    );
 }

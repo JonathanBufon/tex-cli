@@ -33,13 +33,19 @@ docker run --rm --name tex-cli \
   tex-cli cargo test --test cli_init
 ```
 
-## Higiene: fmt + clippy dentro do container
+## Higiene: fmt + clippy dentro do container (dev flow padrão)
+
+Antes de qualquer commit / PR:
 
 ```bash
 docker run --rm --name tex-cli \
   -v $(pwd):/src -w /src \
   tex-cli sh -lc "cargo fmt --all -- --check && cargo clippy --all-targets --all-features -- -D warnings"
 ```
+
+Ambos são gates hard: `fmt` reprova se algum arquivo diverge do estilo;
+`clippy -D warnings` reprova qualquer lint. Rode `cargo fmt --all` sem
+`--check` para aplicar as correções antes.
 
 ## Copiar artefatos gerados no container para o host
 

@@ -167,11 +167,7 @@ impl Config {
         })
     }
 
-    pub fn new_from_prompts(
-        templates_dir: PathBuf,
-        output_dir: PathBuf,
-        engine: String,
-    ) -> Self {
+    pub fn new_from_prompts(templates_dir: PathBuf, output_dir: PathBuf, engine: String) -> Self {
         Self {
             paths: PathsConfig {
                 templates_dir,
@@ -188,11 +184,7 @@ impl Config {
         }
     }
 
-    pub fn apply(
-        &mut self,
-        key: ConfigKey,
-        raw_value: &str,
-    ) -> Result<AppliedChange, TexError> {
+    pub fn apply(&mut self, key: ConfigKey, raw_value: &str) -> Result<AppliedChange, TexError> {
         match key {
             ConfigKey::PathsTemplatesDir => {
                 let expanded = crate::paths::expand_user_path(raw_value)?;
@@ -280,13 +272,19 @@ impl Config {
     }
 
     pub fn save_atomic(&self, target: &Path) -> Result<(), TexError> {
-        let parent = target.parent().ok_or_else(|| TexError::Io(
-            std::io::Error::new(std::io::ErrorKind::InvalidInput, "target has no parent dir"),
-        ))?;
+        let parent = target.parent().ok_or_else(|| {
+            TexError::Io(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "target has no parent dir",
+            ))
+        })?;
         fs::create_dir_all(parent)?;
 
         let serialized = toml::to_string_pretty(self).map_err(|e| {
-            TexError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))
+            TexError::Io(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                e.to_string(),
+            ))
         })?;
 
         let mut tmp = tempfile::NamedTempFile::new_in(parent).map_err(|e| match e.kind() {
@@ -437,7 +435,12 @@ ask_output_path_every_time = false
         cfg.save_atomic(&target).unwrap();
 
         let mode = std::fs::metadata(&target).unwrap().permissions().mode();
-        assert_eq!(mode & 0o777, 0o600, "expected 0o600, got {:o}", mode & 0o777);
+        assert_eq!(
+            mode & 0o777,
+            0o600,
+            "expected 0o600, got {:o}",
+            mode & 0o777
+        );
     }
 
     #[test]

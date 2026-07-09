@@ -103,18 +103,17 @@ fn set_unknown_key_exits_12_and_lists_accepted() {
     write_valid_config(&home);
 
     let assert = set_cmd(&home).args(["foo.bar", "baz"]).assert();
-    assert
-        .failure()
-        .code(12)
-        .stderr(
-            predicate::str::contains("foo.bar")
-                .and(predicate::str::contains("paths.templates_dir"))
-                .and(predicate::str::contains("paths.output_dir"))
-                .and(predicate::str::contains("compiler.engine"))
-                .and(predicate::str::contains("compiler.keep_tex"))
-                .and(predicate::str::contains("compiler.keep_logs"))
-                .and(predicate::str::contains("behavior.ask_output_path_every_time")),
-        );
+    assert.failure().code(12).stderr(
+        predicate::str::contains("foo.bar")
+            .and(predicate::str::contains("paths.templates_dir"))
+            .and(predicate::str::contains("paths.output_dir"))
+            .and(predicate::str::contains("compiler.engine"))
+            .and(predicate::str::contains("compiler.keep_tex"))
+            .and(predicate::str::contains("compiler.keep_logs"))
+            .and(predicate::str::contains(
+                "behavior.ask_output_path_every_time",
+            )),
+    );
 }
 
 #[test]

@@ -18,7 +18,8 @@ RUN curl --proto '=https' --tlsv1.2 -fsSL https://drop-sh.fullyjustified.net \
     && chmod +x /usr/local/bin/tectonic
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-      | sh -s -- -y --default-toolchain stable --profile minimal
+      | sh -s -- -y --default-toolchain stable --profile minimal \
+        --component rustfmt --component clippy
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 WORKDIR /src
