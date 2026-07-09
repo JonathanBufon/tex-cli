@@ -8,11 +8,13 @@ use std::str::FromStr;
 use crate::config::{render_humano, Config, ConfigKey};
 use crate::errors::TexError;
 use crate::interactive::{
-    confirm_create_dir, confirm_overwrite, confirm_overwrite_template, run_init_prompts,
+    confirm_create_dir, confirm_overwrite, confirm_overwrite_template, confirm_remove_template,
+    run_init_prompts,
 };
 use crate::paths::config_file_path;
 use crate::templates::{
-    add_template, list_templates, read_template, render_template_list_humano,
+    add_template, list_templates, read_template, remove_template, render_template_list_humano,
+    resolve_template,
 };
 
 #[derive(Debug, Parser)]
@@ -309,8 +311,34 @@ pub fn handle_templates_add(args: AddTemplateArgs) -> Result<()> {
     Ok(())
 }
 
-pub fn handle_templates_remove(_name: String, _force: bool) -> Result<()> {
-    Err(anyhow!("handle_templates_remove: não implementado"))
+pub fn handle_templates_remove(name: String, force: bool) -> Result<()> {
+    use std::io::IsTerminal;
+
+    let path = config_file_path()?;
+    let cfg = Config::load(&path)?;
+    let dir = &cfg.paths.templates_dir;
+
+    // Resolve first so a nonexistent name returns exit 20 even with --force.
+    let _ = resolve_template(dir, &name)?;
+
+    let should_remove = if force {
+        true
+    } else if std::io::stdin().is_terminal() {
+        confirm_remove_template(&name)?
+    } else {
+        eprintln!(
+            "Template '{name}' não removido: use --force ou execute em terminal interativo."
+        );
+        false
+    };
+
+    if !should_remove {
+        return Err(anyhow::Error::new(TexError::UserAborted));
+    }
+
+    let removed_path = remove_template(dir, &name, true)?;
+    println!("Template '{name}' removido de {}.", removed_path.display());
+    Ok(())
 }
 
 pub fn handle_templates_menu() -> Result<()> {

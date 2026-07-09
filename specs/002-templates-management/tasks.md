@@ -163,10 +163,10 @@ description: "Task list for feature 002-templates-management"
 
 ### Implementation for User Story 4
 
-- [ ] T025 [P] [US4] Implementar `pub fn remove_template(dir: &Path, name: &str, force: bool) -> Result<PathBuf, TexError>` em `src/templates.rs`: (1) `dir` exists → senão `TemplatesDirMissing`; (2) `path = resolve_template(dir, name)?` (propaga `TemplateNotFound`); (3) se `!force` → retorna `UserAborted` (caller decide se prompta); (4) `fs::remove_file(&path)?` mapeando `PermissionDenied`; (5) retornar `path`. Depende de T014.
-- [ ] T026 [US4] Estender `src/interactive.rs`: `pub fn confirm_remove_template(name: &str) -> Result<bool, TexError>` usando `inquire::Confirm::new("Remover template '{name}'?").with_default(false)`.
-- [ ] T027 [US4] Implementar `handle_templates_remove(name: String, force: bool)` em `src/cli.rs`: (1) load config; (2) `path = resolve_template(...)?` para saber que existe e retornar exit 20 cedo se não; (3) TTY check via `IsTerminal`; (4) se `!force` + TTY → `confirm_remove_template` prompt; se "não" → `UserAborted` (exit 15); (5) se `!force` + não-TTY → `UserAborted` (exit 15), stderr `Template '<name>' não removido: use --force ou execute em terminal interativo.`; (6) `remove_template(dir, name, true)`; (7) stdout: `Template '{name}' removido de {path}.`. Depende de T025, T026.
-- [ ] T028 [US4] Rodar `tests/cli_templates_remove.rs`.
+- [X] T025 [P] [US4] Implementar `pub fn remove_template(dir: &Path, name: &str, force: bool) -> Result<PathBuf, TexError>` em `src/templates.rs`: (1) `dir` exists → senão `TemplatesDirMissing`; (2) `path = resolve_template(dir, name)?` (propaga `TemplateNotFound`); (3) se `!force` → retorna `UserAborted` (caller decide se prompta); (4) `fs::remove_file(&path)?` mapeando `PermissionDenied`; (5) retornar `path`. Depende de T014.
+- [X] T026 [US4] Estender `src/interactive.rs`: `pub fn confirm_remove_template(name: &str) -> Result<bool, TexError>` usando `inquire::Confirm::new("Remover template '{name}'?").with_default(false)`.
+- [X] T027 [US4] Implementar `handle_templates_remove(name: String, force: bool)` em `src/cli.rs`: (1) load config; (2) `path = resolve_template(...)?` para saber que existe e retornar exit 20 cedo se não; (3) TTY check via `IsTerminal`; (4) se `!force` + TTY → `confirm_remove_template` prompt; se "não" → `UserAborted` (exit 15); (5) se `!force` + não-TTY → `UserAborted` (exit 15), stderr `Template '<name>' não removido: use --force ou execute em terminal interativo.`; (6) `remove_template(dir, name, true)`; (7) stdout: `Template '{name}' removido de {path}.`. Depende de T025, T026.
+- [X] T028 [US4] Rodar `tests/cli_templates_remove.rs`.
 
 **Checkpoint**: `templates remove` completo com todas as guardas.
 

@@ -58,6 +58,13 @@ pub fn confirm_overwrite_template(name: &str) -> Result<bool, TexError> {
         .map_err(map_inquire_err)
 }
 
+pub fn confirm_remove_template(name: &str) -> Result<bool, TexError> {
+    Confirm::new(&format!("Remover template '{name}'?"))
+        .with_default(false)
+        .prompt()
+        .map_err(map_inquire_err)
+}
+
 fn map_inquire_err(err: InquireError) -> TexError {
     match err {
         InquireError::OperationCanceled | InquireError::OperationInterrupted => {

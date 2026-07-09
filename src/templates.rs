@@ -207,6 +207,27 @@ fn write_atomic_0644(target: &Path, bytes: &[u8]) -> Result<(), TexError> {
     Ok(())
 }
 
+pub fn remove_template(dir: &Path, name: &str, force: bool) -> Result<PathBuf, TexError> {
+    if !dir.exists() || !dir.is_dir() {
+        return Err(TexError::TemplatesDirMissing {
+            templates_dir: dir.to_path_buf(),
+        });
+    }
+
+    let path = resolve_template(dir, name)?;
+
+    if !force {
+        return Err(TexError::UserAborted);
+    }
+
+    fs::remove_file(&path).map_err(|e| match e.kind() {
+        std::io::ErrorKind::PermissionDenied => TexError::PermissionDenied { path: path.clone() },
+        _ => TexError::Io(e),
+    })?;
+
+    Ok(path)
+}
+
 pub fn read_template(dir: &Path, name: &str) -> Result<Vec<u8>, TexError> {
     let path = resolve_template(dir, name)?;
     fs::read(&path).map_err(|e| match e.kind() {
@@ -552,6 +573,31 @@ mod tests {
         assert_eq!(outcome.name, "outro");
         assert!(templates.join("outro.tex").exists());
         assert!(!templates.join("src.tex").exists());
+    }
+
+    #[test]
+    fn remove_template_deletes_when_force() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("x.tex"), b"content").unwrap();
+        let removed = remove_template(tmp.path(), "x", true).unwrap();
+        assert_eq!(removed, tmp.path().join("x.tex"));
+        assert!(!removed.exists());
+    }
+
+    #[test]
+    fn remove_template_without_force_aborts_and_keeps_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("x.tex"), b"content").unwrap();
+        let err = remove_template(tmp.path(), "x", false).unwrap_err();
+        assert!(matches!(err, TexError::UserAborted));
+        assert!(tmp.path().join("x.tex").exists());
+    }
+
+    #[test]
+    fn remove_template_nonexistent_returns_template_not_found() {
+        let tmp = tempfile::tempdir().unwrap();
+        let err = remove_template(tmp.path(), "nope", true).unwrap_err();
+        assert!(matches!(err, TexError::TemplateNotFound { .. }));
     }
 
     #[test]
