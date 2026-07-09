@@ -62,7 +62,7 @@ description: "Task list for feature 001-config-init-management"
 
 ### Tests for User Story 1 (write first, ensure they FAIL before implementation) ⚠️
 
-- [ ] T010 [P] [US1] Criar `tests/cli_init.rs` com testes de integração usando `assert_cmd` + `assert_fs`:
+- [X] T010 [P] [US1] Criar `tests/cli_init.rs` com testes de integração usando `assert_cmd` + `assert_fs`:
   - `init_creates_config_with_valid_answers`: `HOME` isolado (`assert_fs::TempDir`), envia respostas via stdin, verifica que arquivo existe no path esperado, contém as três respostas, tem `modo & 0o777 == 0o600`.
   - `init_refuses_overwrite_without_confirmation`: cria config pré-existente, roda init, responde "não" à confirmação, arquivo original permanece byte-a-byte igual.
   - `init_prompts_to_create_missing_templates_dir`: informa dir inexistente, responde "sim", verifica que dir foi criado.
