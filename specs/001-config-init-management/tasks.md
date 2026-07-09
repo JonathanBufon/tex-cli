@@ -119,7 +119,7 @@ description: "Task list for feature 001-config-init-management"
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T024 [P] [US3] Criar `tests/cli_config_set.rs`:
+- [X] T024 [P] [US3] Criar `tests/cli_config_set.rs`:
   - `set_boolean_flips_only_target_key`: config semanticamente comparado antes/depois — apenas a chave alvo mudou.
   - `set_path_expands_tilde`: `config set paths.templates_dir '~/x'` → arquivo contém `/home/<user>/x` absoluto.
   - `set_unknown_key_exits_12_and_lists_accepted`: `config set foo.bar baz` → exit `12`, stderr lista as 6 chaves canônicas.
