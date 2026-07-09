@@ -31,6 +31,34 @@ pub struct BehaviorConfig {
     pub ask_output_path_every_time: bool,
 }
 
+pub const DEFAULT_ENGINE: &str = "tectonic";
+pub const DEFAULT_KEEP_TEX: bool = true;
+pub const DEFAULT_KEEP_LOGS: bool = true;
+pub const DEFAULT_ASK_OUTPUT_PATH_EVERY_TIME: bool = false;
+
+impl Config {
+    pub fn new_from_prompts(
+        templates_dir: PathBuf,
+        output_dir: PathBuf,
+        engine: String,
+    ) -> Self {
+        Self {
+            paths: PathsConfig {
+                templates_dir,
+                output_dir,
+            },
+            compiler: CompilerConfig {
+                engine,
+                keep_tex: DEFAULT_KEEP_TEX,
+                keep_logs: DEFAULT_KEEP_LOGS,
+            },
+            behavior: BehaviorConfig {
+                ask_output_path_every_time: DEFAULT_ASK_OUTPUT_PATH_EVERY_TIME,
+            },
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
