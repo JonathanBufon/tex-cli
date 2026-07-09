@@ -92,7 +92,7 @@ description: "Task list for feature 001-config-init-management"
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T019 [P] [US2] Criar `tests/cli_config_show.rs`:
+- [X] T019 [P] [US2] Criar `tests/cli_config_show.rs`:
   - `show_humano_prints_all_sections`: config válido → stdout contém "paths", "compiler", "behavior".
   - `show_format_json_is_valid_and_pipeable`: parseia stdout como `serde_json::Value`, verifica `.compiler.engine == "tectonic"`.
   - `show_format_toml_roundtrips`: parseia stdout como TOML, semanticamente igual ao arquivo original.
