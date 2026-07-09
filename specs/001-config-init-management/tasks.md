@@ -152,8 +152,8 @@ description: "Task list for feature 001-config-init-management"
   - `banner_content_matches_asset` — lê `assets/banner.txt` no host, compara com stderr do binário.
 - [X] T031 [P] Rodar `cargo fmt --all -- --check` e `cargo clippy --all-targets --all-features -- -D warnings`. Corrigir violações. Adicionar a comando padrão do dev flow no `docker/README.md`.
 - [X] T032 [P] Escrever `README.md` na raiz (substituindo o atual de 2 linhas): título, descrição de 2 parágrafos, seção "Instalação" (`cargo install --path .`), seção "Uso básico" com os três comandos, link para `specs/001-config-init-management/quickstart.md` e para a constitution. Sem badges (evitar YAGNI).
-- [ ] T033 Rodar o quickstart.md do início ao fim dentro do container Docker: `docker build`, `docker run --rm -v $(pwd):/src -w /src tex-cli cargo test --all`. Verificar que 100% dos testes passam. Documentar tempo total no PR/commit final.
-- [ ] T034 Validar SC-002 (`config show < 100ms`) e SC-006 (script CI não-interativo lê e altera) usando os binários compilados. Registrar tempo no commit final ou em nota no quickstart.
+- [X] T033 Rodar o quickstart.md do início ao fim dentro do container Docker: `docker build`, `docker run --rm -v $(pwd):/src -w /src tex-cli cargo test --all`. Verificar que 100% dos testes passam. Documentar tempo total no PR/commit final.
+- [X] T034 Validar SC-002 (`config show < 100ms`) e SC-006 (script CI não-interativo lê e altera) usando os binários compilados. Registrar tempo no commit final ou em nota no quickstart.
 
 **Checkpoint**: Feature pronta para code review e merge.
 

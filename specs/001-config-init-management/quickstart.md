@@ -209,7 +209,36 @@ tex-cli -vv config set compiler.engine tectonic 2> debug.log
 
 ---
 
-## 8. Troubleshooting
+## 8. Baseline de performance e CI (T034)
+
+Medições feitas em `2026-07-09` dentro do container Docker sancionado,
+binário release, sobre config canônico (~200 bytes):
+
+| Métrica                                           | Alvo    | Medido |
+|---------------------------------------------------|---------|--------|
+| SC-002 · `config show --format json` (wall-clock) | <100 ms | 1 ms   |
+| Ciclo `cargo test --all` (target/ quente)         | —       | ~2 s   |
+| Build inicial (`cargo build --release`)            | —       | ~16 s  |
+
+SC-006 (script CI não-interativo) validado end-to-end no mesmo
+container:
+
+```bash
+tex-cli init \
+  --templates-dir /tmp/templates \
+  --output-dir /tmp/output \
+  --engine tectonic \
+  --create-dirs
+
+tex-cli config show --format json | jq .compiler.keep_tex   # true
+tex-cli config set compiler.keep_tex false
+tex-cli config show --format json | jq .compiler.keep_tex   # false
+```
+
+Nenhum passo pediu input interativo; todos os subcomandos leem/escrevem
+com stdout limpo.
+
+## 9. Troubleshooting
 
 | Sintoma                                                       | Causa provável                                | Ação                                                       |
 |---------------------------------------------------------------|-----------------------------------------------|------------------------------------------------------------|
