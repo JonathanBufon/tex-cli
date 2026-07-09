@@ -93,7 +93,7 @@ description: "Task list for feature 002-templates-management"
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T012 [P] [US2] Criar `tests/cli_templates_show.rs`:
+- [X] T012 [P] [US2] Criar `tests/cli_templates_show.rs`:
   - `show_prints_raw_content`: `diff` entre stdout do `show` e o arquivo original é vazio.
   - `show_accepts_name_with_or_without_extension`: `show artigo` e `show artigo.tex` produzem stdout idêntico.
   - `show_missing_template_exits_20`: nome inexistente → exit 20, stderr `Template '<name>' não existe em <path>`.
