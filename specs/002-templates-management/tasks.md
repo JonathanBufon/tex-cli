@@ -100,7 +100,7 @@ description: "Task list for feature 002-templates-management"
   - `show_case_sensitive`: dir com `artigo.tex` e `Artigo.tex`; `show artigo` retorna conteúdo de `artigo.tex`, `show Artigo` retorna `Artigo.tex`.
   - `show_missing_config_exits_10`: sem config → exit 10.
   - `show_templates_dir_missing_exits_22`.
-- [ ] T013 [P] [US2] Unit tests inline em `src/templates.rs` para `resolve_template`:
+- [X] T013 [P] [US2] Unit tests inline em `src/templates.rs` para `resolve_template`:
   - `resolve_with_extension_finds_file`.
   - `resolve_without_extension_finds_file`.
   - `resolve_case_sensitive`.
@@ -108,10 +108,10 @@ description: "Task list for feature 002-templates-management"
 
 ### Implementation for User Story 2
 
-- [ ] T014 [P] [US2] Implementar `pub fn resolve_template(dir: &Path, name: &str) -> Result<PathBuf, TexError>` em `src/templates.rs` conforme D-02 do research: (1) se `dir` não existe → `TemplatesDirMissing`; (2) se `name.ends_with(".tex")`, tenta `dir.join(name)`; senão, tenta `dir.join(format!("{name}.tex"))`; (3) `path.exists() && path.is_file()` → retorna `path`, senão `TemplateNotFound { name: name.to_string(), templates_dir: dir.to_path_buf() }`. Depende de T002.
-- [ ] T015 [US2] Implementar `pub fn read_template(dir: &Path, name: &str) -> Result<Vec<u8>, TexError>` em `src/templates.rs`: delega a `resolve_template` + `fs::read`, mapeando `PermissionDenied`. Depende de T014.
-- [ ] T016 [US2] Implementar `handle_templates_show(name: String)` em `src/cli.rs`: (1) load config; (2) `read_template(&cfg.paths.templates_dir, &name)?`; (3) `io::stdout().write_all(&bytes)?` (bytes brutos, não `println!`). Depende de T015.
-- [ ] T017 [US2] Rodar `tests/cli_templates_show.rs` e ajustar. Verificar que `show` não altera mtime do arquivo (mesmo padrão do `config show` da spec 001).
+- [X] T014 [P] [US2] Implementar `pub fn resolve_template(dir: &Path, name: &str) -> Result<PathBuf, TexError>` em `src/templates.rs` conforme D-02 do research: (1) se `dir` não existe → `TemplatesDirMissing`; (2) se `name.ends_with(".tex")`, tenta `dir.join(name)`; senão, tenta `dir.join(format!("{name}.tex"))`; (3) `path.exists() && path.is_file()` → retorna `path`, senão `TemplateNotFound { name: name.to_string(), templates_dir: dir.to_path_buf() }`. Depende de T002.
+- [X] T015 [US2] Implementar `pub fn read_template(dir: &Path, name: &str) -> Result<Vec<u8>, TexError>` em `src/templates.rs`: delega a `resolve_template` + `fs::read`, mapeando `PermissionDenied`. Depende de T014.
+- [X] T016 [US2] Implementar `handle_templates_show(name: String)` em `src/cli.rs`: (1) load config; (2) `read_template(&cfg.paths.templates_dir, &name)?`; (3) `io::stdout().write_all(&bytes)?` (bytes brutos, não `println!`). Depende de T015.
+- [X] T017 [US2] Rodar `tests/cli_templates_show.rs` e ajustar. Verificar que `show` não altera mtime do arquivo (mesmo padrão do `config show` da spec 001).
 
 **Checkpoint**: `tex-cli templates show <nome>` funcional. Pipe pra `less` funciona.
 

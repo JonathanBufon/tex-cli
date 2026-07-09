@@ -9,7 +9,7 @@ use crate::config::{render_humano, Config, ConfigKey};
 use crate::errors::TexError;
 use crate::interactive::{confirm_create_dir, confirm_overwrite, run_init_prompts};
 use crate::paths::config_file_path;
-use crate::templates::{list_templates, render_template_list_humano};
+use crate::templates::{list_templates, read_template, render_template_list_humano};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -242,8 +242,14 @@ pub fn handle_templates_list(format: ShowFormat) -> Result<()> {
     Ok(())
 }
 
-pub fn handle_templates_show(_name: String) -> Result<()> {
-    Err(anyhow!("handle_templates_show: não implementado"))
+pub fn handle_templates_show(name: String) -> Result<()> {
+    use std::io::Write;
+
+    let path = config_file_path()?;
+    let cfg = Config::load(&path)?;
+    let bytes = read_template(&cfg.paths.templates_dir, &name)?;
+    std::io::stdout().write_all(&bytes)?;
+    Ok(())
 }
 
 pub fn handle_templates_add(_args: AddTemplateArgs) -> Result<()> {

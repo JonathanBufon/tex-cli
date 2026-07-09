@@ -79,6 +79,37 @@ pub fn list_templates(dir: &Path) -> Result<Vec<Template>, TexError> {
     Ok(templates)
 }
 
+pub fn resolve_template(dir: &Path, name: &str) -> Result<PathBuf, TexError> {
+    if !dir.exists() || !dir.is_dir() {
+        return Err(TexError::TemplatesDirMissing {
+            templates_dir: dir.to_path_buf(),
+        });
+    }
+
+    let candidate = if name.ends_with(".tex") {
+        dir.join(name)
+    } else {
+        dir.join(format!("{name}.tex"))
+    };
+
+    if candidate.is_file() {
+        Ok(candidate)
+    } else {
+        Err(TexError::TemplateNotFound {
+            name: name.to_string(),
+            templates_dir: dir.to_path_buf(),
+        })
+    }
+}
+
+pub fn read_template(dir: &Path, name: &str) -> Result<Vec<u8>, TexError> {
+    let path = resolve_template(dir, name)?;
+    fs::read(&path).map_err(|e| match e.kind() {
+        std::io::ErrorKind::PermissionDenied => TexError::PermissionDenied { path },
+        _ => TexError::Io(e),
+    })
+}
+
 pub fn render_template_list_humano(dir: &Path, templates: &[Template]) -> String {
     if templates.is_empty() {
         return format!("Nenhum template encontrado em {}.\n", dir.display());
@@ -278,6 +309,66 @@ mod tests {
     fn epoch_conversion_epoch_zero() {
         let (y, mo, d, h, mi) = epoch_to_ymd_hm(0);
         assert_eq!((y, mo, d, h, mi), (1970, 1, 1, 0, 0));
+    }
+
+    #[test]
+    fn resolve_with_extension_finds_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        seed(tmp.path(), "artigo.tex", "");
+        let path = resolve_template(tmp.path(), "artigo.tex").unwrap();
+        assert_eq!(path, tmp.path().join("artigo.tex"));
+    }
+
+    #[test]
+    fn resolve_without_extension_finds_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        seed(tmp.path(), "artigo.tex", "");
+        let path = resolve_template(tmp.path(), "artigo").unwrap();
+        assert_eq!(path, tmp.path().join("artigo.tex"));
+    }
+
+    #[test]
+    fn resolve_case_sensitive() {
+        let tmp = tempfile::tempdir().unwrap();
+        seed(tmp.path(), "artigo.tex", "lower");
+        seed(tmp.path(), "Artigo.tex", "upper");
+        assert_eq!(
+            resolve_template(tmp.path(), "artigo").unwrap(),
+            tmp.path().join("artigo.tex")
+        );
+        assert_eq!(
+            resolve_template(tmp.path(), "Artigo").unwrap(),
+            tmp.path().join("Artigo.tex")
+        );
+    }
+
+    #[test]
+    fn resolve_missing_returns_template_not_found() {
+        let tmp = tempfile::tempdir().unwrap();
+        let err = resolve_template(tmp.path(), "parecer").unwrap_err();
+        match err {
+            TexError::TemplateNotFound { name, templates_dir } => {
+                assert_eq!(name, "parecer");
+                assert_eq!(templates_dir, tmp.path());
+            }
+            other => panic!("expected TemplateNotFound, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn resolve_missing_dir_returns_templates_dir_missing() {
+        let missing = PathBuf::from("/definitely/not/here/tex-cli");
+        let err = resolve_template(&missing, "anything").unwrap_err();
+        assert!(matches!(err, TexError::TemplatesDirMissing { .. }));
+    }
+
+    #[test]
+    fn read_template_returns_bytes() {
+        let tmp = tempfile::tempdir().unwrap();
+        let payload = b"\\documentclass{article}\n";
+        std::fs::write(tmp.path().join("artigo.tex"), payload).unwrap();
+        let bytes = read_template(tmp.path(), "artigo").unwrap();
+        assert_eq!(bytes, payload);
     }
 
     #[test]
