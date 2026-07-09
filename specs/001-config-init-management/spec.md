@@ -8,6 +8,16 @@
 
 **Input**: User description: "Configuração inicial e gestão do config do Tex CLI — `init`, `config show`, `config set` — arquivo TOML em `~/.config/tex/config.toml`."
 
+## Clarifications
+
+### Session 2026-07-09
+
+- Q: Formato das chaves aceitas por `config set` (flat, dotted, ou misto)? → A: Sempre dotted path — uma única forma canônica (`paths.templates_dir`, `paths.output_dir`, `compiler.engine`, `compiler.keep_tex`, `compiler.keep_logs`, `behavior.ask_output_path_every_time`). Sem aliases.
+- Q: Escrita do arquivo de config deve ser atômica em caso de crash mid-write? → A: Sim, sempre — via arquivo temporário no mesmo diretório e rename atômico. Não aceitamos janela de corrupção.
+- Q: `config show` precisa de formato estruturado para scripts, ou só humano? → A: Padrão humano legível; suporta flag `--format=<humano|json|toml>` para consumo por scripts (json/toml determinísticos, sem cores nem enfeites).
+- Q: Que permissão UNIX o arquivo de config deve receber ao ser criado? → A: `0600` (leitura e escrita apenas para o dono), consistente com `gh`, `aws`, `ssh` — defesa em profundidade mesmo sem conteúdo secreto.
+- Q: Como o usuário controla a verbosidade de logs desta feature? → A: Silencioso por padrão; flag global `-v`/`--verbose` repetível (`-v` → info, `-vv` → debug, `-vvv` → trace); erros sempre em stderr independente do nível. Padrão Unix clássico.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Primeira configuração após instalar o Tex (Priority: P1)
@@ -164,6 +174,17 @@ idênticas e que nenhum prompt interativo foi disparado.
   seções lógicas: caminhos, compilador e comportamento.
 - **FR-003**: O sistema MUST criar automaticamente qualquer diretório
   intermediário necessário para gravar o arquivo de config.
+- **FR-003a**: Toda gravação do arquivo de config (seja pelo comando
+  de inicialização ou pelo comando de alteração pontual) MUST ser
+  **atômica**: o conteúdo é escrito primeiro em arquivo temporário no
+  mesmo diretório do config final e então renomeado para o caminho de
+  destino. Nunca ocorre gravação parcial visível ao usuário — em caso
+  de crash durante a escrita, o arquivo anterior permanece íntegro.
+- **FR-003b**: O arquivo de config, ao ser criado (ou reescrito via
+  fluxo atômico), MUST receber as permissões UNIX **`0600`** — leitura
+  e escrita apenas para o proprietário. Isto vale tanto para o path
+  final quanto para o arquivo temporário usado no rename, evitando
+  janela de visibilidade a outros usuários da máquina.
 
 **Comando de inicialização**
 
@@ -185,8 +206,12 @@ idênticas e que nenhum prompt interativo foi disparado.
 **Comando de inspeção**
 
 - **FR-010**: O sistema MUST oferecer um comando não interativo de
-  inspeção que exiba o conteúdo atual do config em formato humano
-  legível.
+  inspeção que exiba o conteúdo atual do config. O formato padrão MUST
+  ser humano legível (agrupado por seção, sem ruído). O comando MUST
+  aceitar uma flag de formato (por exemplo `--format=<humano|json|toml>`)
+  que altera a saída para JSON ou TOML determinísticos — sem cores,
+  sem cabeçalhos decorativos — de modo a permitir consumo direto por
+  scripts (`jq`, redirecionamento, comparação diff).
 - **FR-011**: Se o config não existir, o comando de inspeção MUST
   exibir mensagem orientando executar a inicialização e MUST sair com
   código de erro.
@@ -199,12 +224,15 @@ idênticas e que nenhum prompt interativo foi disparado.
 
 - **FR-013**: O sistema MUST oferecer um comando não interativo que
   altere exatamente uma chave do config sem afetar as demais.
-- **FR-014**: As chaves suportadas para alteração pontual MUST ser, no
-  mínimo: `templates_dir`, `output_dir`, `compiler.engine`,
-  `compiler.keep_tex`, `compiler.keep_logs` e
-  `behavior.ask_output_path_every_time`.
-- **FR-015**: Se a chave informada não for reconhecida, o sistema MUST
-  listar as chaves aceitas e sair com erro sem modificar o arquivo.
+- **FR-014**: As chaves suportadas para alteração pontual MUST ser
+  expressas em **notação dotted path** correspondendo 1:1 à estrutura
+  do arquivo TOML: `paths.templates_dir`, `paths.output_dir`,
+  `compiler.engine`, `compiler.keep_tex`, `compiler.keep_logs` e
+  `behavior.ask_output_path_every_time`. Não são aceitos aliases,
+  formas curtas ou variações.
+- **FR-015**: Se a chave informada não for reconhecida (não estiver
+  na lista canônica em notação dotted), o sistema MUST listar as
+  chaves aceitas e sair com erro sem modificar o arquivo.
 - **FR-016**: Para chaves de caminho, o sistema MUST expandir
   referências ao diretório home (`~`) e caminhos relativos para
   absolutos antes de gravar.
@@ -232,6 +260,12 @@ idênticas e que nenhum prompt interativo foi disparado.
 - **FR-023**: Nenhum comando desta feature MUST modificar templates,
   PDFs ou arquivos fora do próprio arquivo de config (e, quando
   autorizado explicitamente, do diretório de templates informado).
+- **FR-024**: Todos os comandos desta feature MUST ser **silenciosos
+  por padrão** (apenas saída essencial em stdout, erros em stderr).
+  Uma flag global `-v`/`--verbose`, repetível, MUST elevar
+  progressivamente o nível de log: `-v` = informativo, `-vv` = debug,
+  `-vvv` = trace. Mensagens de erro para o usuário MUST ir para stderr
+  independentemente do nível de verbosidade — nunca são suprimidas.
 
 ### Key Entities
 
