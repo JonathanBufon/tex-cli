@@ -1,2 +1,2 @@
-# tex
+# tex-cli
 cli tool to compile and export tex files to PDF
