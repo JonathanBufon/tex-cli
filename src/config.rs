@@ -36,6 +36,42 @@ pub struct BehaviorConfig {
     pub ask_output_path_every_time: bool,
 }
 
+pub fn render_humano(c: &Config) -> String {
+    let mut out = String::new();
+
+    out.push_str("[paths]\n");
+    out.push_str(&format!(
+        "  templates_dir              = {}\n",
+        c.paths.templates_dir.display()
+    ));
+    out.push_str(&format!(
+        "  output_dir                 = {}\n",
+        c.paths.output_dir.display()
+    ));
+
+    out.push_str("\n[compiler]\n");
+    out.push_str(&format!(
+        "  engine                     = {}\n",
+        c.compiler.engine
+    ));
+    out.push_str(&format!(
+        "  keep_tex                   = {}\n",
+        c.compiler.keep_tex
+    ));
+    out.push_str(&format!(
+        "  keep_logs                  = {}\n",
+        c.compiler.keep_logs
+    ));
+
+    out.push_str("\n[behavior]\n");
+    out.push_str(&format!(
+        "  ask_output_path_every_time = {}\n",
+        c.behavior.ask_output_path_every_time
+    ));
+
+    out
+}
+
 pub const DEFAULT_ENGINE: &str = "tectonic";
 pub const DEFAULT_KEEP_TEX: bool = true;
 pub const DEFAULT_KEEP_LOGS: bool = true;
