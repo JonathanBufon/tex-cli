@@ -32,7 +32,7 @@ description: "Task list for feature 001-config-init-management"
 **Purpose**: Bootstrap do projeto Rust + Docker.
 
 - [X] T001 Criar `Cargo.toml` na raiz do repo declarando o binário `tex-cli` (`[[bin]] name = "tex-cli" path = "src/main.rs"`), edition = "2021", e as dependências canônicas da constitution: `clap` (v4, feature `derive`), `inquire`, `serde` (feature `derive`), `serde_json`, `toml`, `dirs`, `tempfile`, `anyhow`, `thiserror`, `tracing`, `tracing-subscriber` (feature `fmt`), `which`. `[dev-dependencies]`: `assert_cmd`, `assert_fs`, `predicates`.
-- [ ] T002 [P] Criar `docker/Dockerfile` (base `debian:bookworm-slim`, instalar `build-essential curl ca-certificates tectonic pkg-config libssl-dev`, instalar Rust stable via rustup, `WORKDIR /src`, `CMD ["cargo","test","--all"]`). Conteúdo conforme D-08 do research.md.
+- [X] T002 [P] Criar `docker/Dockerfile` (base `debian:bookworm-slim`, instalar `build-essential curl ca-certificates tectonic pkg-config libssl-dev`, instalar Rust stable via rustup, `WORKDIR /src`, `CMD ["cargo","test","--all"]`). Conteúdo conforme D-08 do research.md.
 - [ ] T003 [P] Criar `.gitignore` na raiz cobrindo `target/`, `Cargo.lock` (mantém — projeto é binário, não lib), `**/*.rs.bk`.
 - [ ] T004 [P] Criar `docker/README.md` documentando `docker build -t tex-cli -f docker/Dockerfile .`, `docker run --rm --name tex-cli -v $(pwd):/src -w /src tex-cli cargo test --all`, convenção `docker cp tex-cli:<src> /home/jonathan/Downloads/dockers-sharefiles/<dst>` (referência memory `workflow-docker-testing`).
 
