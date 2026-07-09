@@ -42,6 +42,21 @@ pub const DEFAULT_KEEP_LOGS: bool = true;
 pub const DEFAULT_ASK_OUTPUT_PATH_EVERY_TIME: bool = false;
 
 impl Config {
+    pub fn load(path: &Path) -> Result<Self, TexError> {
+        let contents = fs::read_to_string(path).map_err(|e| match e.kind() {
+            std::io::ErrorKind::NotFound => TexError::ConfigMissing,
+            std::io::ErrorKind::PermissionDenied => TexError::PermissionDenied {
+                path: path.to_path_buf(),
+            },
+            _ => TexError::Io(e),
+        })?;
+
+        toml::from_str::<Config>(&contents).map_err(|e| TexError::ConfigCorrupted {
+            path: path.to_path_buf(),
+            detail: e.message().to_string(),
+        })
+    }
+
     pub fn new_from_prompts(
         templates_dir: PathBuf,
         output_dir: PathBuf,
