@@ -17,6 +17,7 @@
 - Q: `config show` precisa de formato estruturado para scripts, ou só humano? → A: Padrão humano legível; suporta flag `--format=<humano|json|toml>` para consumo por scripts (json/toml determinísticos, sem cores nem enfeites).
 - Q: Que permissão UNIX o arquivo de config deve receber ao ser criado? → A: `0600` (leitura e escrita apenas para o dono), consistente com `gh`, `aws`, `ssh` — defesa em profundidade mesmo sem conteúdo secreto.
 - Q: Como o usuário controla a verbosidade de logs desta feature? → A: Silencioso por padrão; flag global `-v`/`--verbose` repetível (`-v` → info, `-vv` → debug, `-vvv` → trace); erros sempre em stderr independente do nível. Padrão Unix clássico.
+- Q: A ferramenta tem um banner ASCII oficial ("TEX CLI") — onde ele aparece? → A: Em **todos** os subcomandos, sempre em stderr (nunca stdout, para não quebrar scripts). Formato final: bloco de letras Unicode sem as bordas `//` do arquivo original. Arquivo canônico: `assets/banner.txt`.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -266,6 +267,14 @@ idênticas e que nenhum prompt interativo foi disparado.
   progressivamente o nível de log: `-v` = informativo, `-vv` = debug,
   `-vvv` = trace. Mensagens de erro para o usuário MUST ir para stderr
   independentemente do nível de verbosidade — nunca são suprimidas.
+- **FR-025**: Todo subcomando desta feature (`init`, `config show`,
+  `config set`) MUST imprimir o **banner oficial "TEX CLI"** em
+  **stderr** como primeira saída da execução, antes de qualquer prompt
+  ou de qualquer conteúdo enviado a stdout. O banner MUST vir do
+  asset canônico `assets/banner.txt` do repositório (embutido no
+  binário em tempo de compilação). O banner NUNCA deve ir para stdout,
+  para preservar `config show --format=json/toml` como saída
+  pipeable. Nenhuma flag desta v1 desabilita o banner.
 
 ### Key Entities
 
