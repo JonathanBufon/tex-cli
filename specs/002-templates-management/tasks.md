@@ -57,7 +57,7 @@ description: "Task list for feature 002-templates-management"
 
 ### Tests for User Story 1 (write first, ensure they FAIL before implementation) ⚠️
 
-- [ ] T005 [P] [US1] Criar `tests/cli_templates_list.rs` com testes de integração usando `assert_cmd` + `assert_fs`:
+- [X] T005 [P] [US1] Criar `tests/cli_templates_list.rs` com testes de integração usando `assert_cmd` + `assert_fs`:
   - `list_humano_shows_three_templates`: `HOME` isolado, config apontando pra tempdir com 3 `.tex`, valida stdout tem 3 linhas + colunas `NOME`/`TAMANHO`/`MODIFICADO`.
   - `list_json_produces_valid_array`: parse via `serde_json::Value`, `.len() == 3`, cada objeto tem `name`, `path`, `size_bytes`, `modified_at_epoch`.
   - `list_ignores_non_tex_files`: tempdir com `artigo.tex` + `refs.bib` + `img.png` → só `artigo` aparece.
