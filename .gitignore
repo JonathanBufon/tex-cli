@@ -13,3 +13,9 @@ Cargo.lock.bak
 # OS
 .DS_Store
 Thumbs.db
+
+# Local scratch (smoke tests, debugging output)
+err.log
+stderr.txt
+*.log
+!examples/**/*.log
