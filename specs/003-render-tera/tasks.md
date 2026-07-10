@@ -177,7 +177,7 @@ description: "Task list for feature 003-render-tera"
   - `banner_never_leaks_on_render_dry_run` — `render ... --dry-run`, verifica que **nenhuma linha do banner asset** aparece em stdout (protege pipe pra `less`/`jq`).
 - [X] T027 [P] Rodar `cargo fmt --all -- --check` e `cargo clippy --all-targets --all-features -- -D warnings` no container. Corrigir violações.
 - [X] T028 [P] Estender `README.md` da raiz: seção "Renderizar JSON → .tex" com exemplos dos 4 fluxos principais (arquivo, dry-run, stdin, menu interativo). Atualizar tabela de exit codes com 30/31. Adicionar linha ao roadmap indicando spec 004 (compile) como próxima.
-- [ ] T029 [P] Adicionar template + JSON de exemplo em `examples/`:
+- [X] T029 [P] Adicionar template + JSON de exemplo em `examples/`:
   - `examples/data/greeting.json` — objeto com 2-3 campos.
   - Documentar em `examples/README.md` a receita `tex-cli render greeting examples/data/greeting.json` (assume que `templates/greeting.tex` já foi adicionado). Zero mudança em `examples/LICENSE-EXAMPLES`.
 - [ ] T030 Rodar o quickstart.md do início ao fim dentro do container Docker: build → init → templates add → `render` (arquivo, dry-run, stdin, force, output custom). Documentar tempo total e outcomes no PR.

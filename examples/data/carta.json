@@ -1,0 +1,11 @@
+{
+  "remetente": "Jonathan Bufon",
+  "cargo_remetente": "Desenvolvedor / Pesquisador Independente",
+  "endereco_remetente": "Rua Exemplo, 123\\\\Chapecó -- SC\\\\CEP 89800-000",
+  "destinatario": "Ao(À) Ilmo(a). Sr(a).\\\\Coordenação de Extensão\\\\Universidade Federal de Santa Catarina\\\\Florianópolis -- SC",
+  "tratamento": "Prof.",
+  "nome_destinatario": "Maria Fernandes",
+  "paragrafo_1": "Cumprimentando-a cordialmente, dirijo-me a Vossa Senhoria para apresentar proposta de colaboração no âmbito do projeto de extensão em redes ópticas metropolitanas.",
+  "paragrafo_2": "A proposta contempla a coleta de dados operacionais em enlaces reais fornecidos por parceiros regionais, com objetivo de calibrar um modelo empírico de ruído em EDFAs sob dependência térmica.",
+  "paragrafo_3": "Coloco-me à disposição para reunião presencial ou remota para detalhamento do escopo, cronograma e produtos esperados."
+}
