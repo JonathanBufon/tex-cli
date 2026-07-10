@@ -30,7 +30,7 @@ description: "Task list for feature 005-build-pipeline"
 
 **Purpose**: Verificar baseline após spec 004 mergeada. Nenhuma dep nova.
 
-- [ ] T001 Rodar `docker run --rm -v $(pwd):/src -w /src tex-cli cargo check --all` no container Docker para confirmar que a baseline das specs 001-004 continua compilando limpo, e que zero nova dep será necessária. Rodar também `cargo test --lib` (rápido, sem tectonic) pra garantir que os 80+ testes unitários passam.
+- [X] T001 Rodar `docker run --rm -v $(pwd):/src -w /src tex-cli cargo check --all` no container Docker para confirmar que a baseline das specs 001-004 continua compilando limpo, e que zero nova dep será necessária. Rodar também `cargo test --lib` (rápido, sem tectonic) pra garantir que os 80+ testes unitários passam.
 
 **Checkpoint**: `cargo check --all` limpo, `cargo test --lib` verde.
 
