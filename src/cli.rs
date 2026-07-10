@@ -48,6 +48,30 @@ pub enum Commands {
 
     /// Gerencia templates LaTeX em `paths.templates_dir`.
     Templates(TemplatesArgs),
+
+    /// Renderiza um template com dados JSON, produzindo um `.tex`.
+    Render(RenderArgs),
+}
+
+#[derive(Debug, clap::Args)]
+pub struct RenderArgs {
+    /// Nome do template (com ou sem `.tex`). Opcional para modo interativo.
+    pub template_name: Option<String>,
+
+    /// Path do arquivo JSON no host OU `-` para ler de stdin. Opcional para modo interativo.
+    pub data_source: Option<String>,
+
+    /// Caminho custom do `.tex` final. Default: `paths.output_dir/<template>.tex`.
+    #[arg(short = 'o', long)]
+    pub output: Option<std::path::PathBuf>,
+
+    /// Imprime o renderizado em stdout, não grava arquivo. Ignora `--output`.
+    #[arg(long)]
+    pub dry_run: bool,
+
+    /// Sobrescreve arquivo existente sem pedir confirmação.
+    #[arg(long)]
+    pub force: bool,
 }
 
 #[derive(Debug, clap::Args)]
@@ -337,6 +361,10 @@ pub fn handle_templates_remove(name: String, force: bool) -> Result<()> {
     let removed_path = remove_template(dir, &name, true)?;
     println!("Template '{name}' removido de {}.", removed_path.display());
     Ok(())
+}
+
+pub fn handle_render(_args: RenderArgs) -> Result<()> {
+    Err(anyhow!("handle_render: não implementado"))
 }
 
 pub fn handle_templates_menu() -> Result<()> {
