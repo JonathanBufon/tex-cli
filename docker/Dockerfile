@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential \
@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       libssl-dev \
       libgraphite2-3 \
       libharfbuzz0b \
-      libicu72 \
+      libicu76 \
       libfontconfig1 \
     && rm -rf /var/lib/apt/lists/*
 

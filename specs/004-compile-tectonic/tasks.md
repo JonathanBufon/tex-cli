@@ -30,7 +30,7 @@ description: "Task list for feature 004-compile-tectonic"
 
 **Purpose**: Verificar baseline após spec 003 mergeada; nenhuma dep nova ativada.
 
-- [ ] T001 Rodar `docker run --rm -v $(pwd):/src -w /src tex-cli cargo check --all` no container Docker sancionado para confirmar que a baseline das specs 001-003 continua compilando limpo, e que zero nova dep será necessária nesta spec. Também rodar `docker run --rm ... tex-cli tectonic --version` (via `sh -c`) para confirmar que o engine default está instalado no container.
+- [X] T001 Rodar `docker run --rm -v $(pwd):/src -w /src tex-cli cargo check --all` no container Docker sancionado para confirmar que a baseline das specs 001-003 continua compilando limpo, e que zero nova dep será necessária nesta spec. Também rodar `docker run --rm ... tex-cli tectonic --version` (via `sh -c`) para confirmar que o engine default está instalado no container.
 
 **Checkpoint**: `cargo check --all` passa. Tectonic disponível no container.
 
