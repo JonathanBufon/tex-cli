@@ -1,6 +1,4 @@
 use std::fs;
-use std::io::Write;
-use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
@@ -165,7 +163,7 @@ pub fn add_template(
         return Err(TexError::UserAborted);
     }
 
-    write_atomic_0644(&dest_path, &bytes)?;
+    crate::atomic::write_atomic(&dest_path, &bytes, 0o644)?;
 
     Ok(AddedTemplate {
         name: dest_name,
@@ -173,38 +171,6 @@ pub fn add_template(
         bytes_written: bytes.len() as u64,
         overwrote_existing,
     })
-}
-
-fn write_atomic_0644(target: &Path, bytes: &[u8]) -> Result<(), TexError> {
-    let parent = target.parent().ok_or_else(|| {
-        TexError::Io(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "target has no parent dir",
-        ))
-    })?;
-
-    let mut tmp = tempfile::NamedTempFile::new_in(parent).map_err(|e| match e.kind() {
-        std::io::ErrorKind::PermissionDenied => TexError::PermissionDenied {
-            path: parent.to_path_buf(),
-        },
-        _ => TexError::Io(e),
-    })?;
-
-    tmp.as_file_mut().write_all(bytes)?;
-    tmp.as_file_mut().sync_all()?;
-
-    let mut perms = tmp.as_file().metadata()?.permissions();
-    perms.set_mode(0o644);
-    tmp.as_file().set_permissions(perms)?;
-
-    tmp.persist(target).map_err(|e| match e.error.kind() {
-        std::io::ErrorKind::PermissionDenied => TexError::PermissionDenied {
-            path: target.to_path_buf(),
-        },
-        _ => TexError::Io(e.error),
-    })?;
-
-    Ok(())
 }
 
 pub fn remove_template(dir: &Path, name: &str, force: bool) -> Result<PathBuf, TexError> {
@@ -329,6 +295,8 @@ fn days_in_month(y: u64, m: u64) -> u64 {
 
 #[cfg(test)]
 mod tests {
+    use std::os::unix::fs::PermissionsExt;
+
     use super::*;
 
     fn seed(dir: &Path, name: &str, content: &str) {
