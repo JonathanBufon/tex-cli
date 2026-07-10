@@ -56,7 +56,7 @@ description: "Task list for feature 004-compile-tectonic"
 
 ### Tests for User Story 1 (write first, ensure they FAIL before implementation) ⚠️
 
-- [ ] T005 [P] [US1] Criar `tests/cli_compile.rs` com testes de integração usando `assert_cmd` + `assert_fs`:
+- [X] T005 [P] [US1] Criar `tests/cli_compile.rs` com testes de integração usando `assert_cmd` + `assert_fs`:
   - `compile_produces_pdf_with_default_output_path`: fixture `.tex` mínimo válido, `HOME` isolado, config com output_dir apontando pra tempdir → PDF criado em `<output_dir>/<basename>.pdf`.
   - `compile_pdf_has_pdf_magic_bytes`: `std::fs::read(&pdf)[0..4] == b"%PDF"`.
   - `compile_pdf_has_mode_0644`: `metadata.permissions().mode() & 0o777 == 0o644`.
