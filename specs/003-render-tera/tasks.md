@@ -31,7 +31,7 @@ description: "Task list for feature 003-render-tera"
 
 **Purpose**: Ativar `tera` na Cargo.toml e verificar a baseline dos specs 001+002.
 
-- [ ] T001 Adicionar `tera = "1"` à seção `[dependencies]` do `Cargo.toml` (crate já listado na stack canônica da constitution, apenas ativado agora). Rodar `docker run --rm -v $(pwd):/src -w /src tex-cli cargo check --all` para confirmar que a resolução baixa `tera` + `pest` sem quebrar nada.
+- [X] T001 Adicionar `tera = "1"` à seção `[dependencies]` do `Cargo.toml` (crate já listado na stack canônica da constitution, apenas ativado agora). Rodar `docker run --rm -v $(pwd):/src -w /src tex-cli cargo check --all` para confirmar que a resolução baixa `tera` + `pest` sem quebrar nada.
 
 **Checkpoint**: `cargo check --all` passa. `Cargo.lock` inclui `tera`.
 
