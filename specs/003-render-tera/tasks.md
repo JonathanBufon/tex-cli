@@ -59,7 +59,7 @@ description: "Task list for feature 003-render-tera"
 
 ### Tests for User Story 1 (write first, ensure they FAIL before implementation) ⚠️
 
-- [ ] T007 [P] [US1] Criar `tests/cli_render.rs` com testes de integração usando `assert_cmd` + `assert_fs`:
+- [X] T007 [P] [US1] Criar `tests/cli_render.rs` com testes de integração usando `assert_cmd` + `assert_fs`:
   - `render_writes_file_with_default_output_path`: template + JSON válidos → arquivo criado em `<home>/.config/tex/output/<name>.tex` com conteúdo renderizado (byte-a-byte esperado), mode 0o644.
   - `render_with_output_flag_uses_custom_path`: `--output /tmp/x.tex` → arquivo em `/tmp/x.tex`, e o default NÃO existe.
   - `render_missing_template_exits_20`: nome inexistente → exit 20, stderr menciona nome + templates_dir.
