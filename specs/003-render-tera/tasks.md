@@ -106,7 +106,7 @@ description: "Task list for feature 003-render-tera"
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T016 [P] [US2] Estender `tests/cli_render.rs`:
+- [X] T016 [P] [US2] Estender `tests/cli_render.rs`:
   - `render_dry_run_prints_to_stdout_and_no_file`: `--dry-run` → stdout tem `.tex` renderizado, `output_dir/<name>.tex` NÃO existe (SC-005 preparação).
   - `render_dry_run_byte_identical_to_written_file`: renderiza duas vezes — uma com `--dry-run` (stdout), outra sem (arquivo). Comparar bytes idênticos (SC-005 completo).
   - `render_dry_run_ignores_output_flag`: `--dry-run --output /tmp/x.tex` → stdout tem conteúdo, `/tmp/x.tex` NÃO é criado.
@@ -114,9 +114,9 @@ description: "Task list for feature 003-render-tera"
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Estender `render_and_write` em `src/render.rs`: (1) se `args.dry_run` → `io::stdout().write_all(rendered.as_bytes())?`; retornar `RenderOutcome { output_path: None, bytes_written: rendered.len() as u64, overwrote_existing: false, dry_run: true }`; (2) senão continua fluxo atual (T013).
-- [ ] T018 [US2] Estender `handle_render`: se `outcome.dry_run` → não imprime linha `Renderizado em ...` (mantém stdout limpo pro pipe). Emitir `tracing::warn!` se `args.dry_run && args.output.is_some()` (D-08 do research).
-- [ ] T019 [US2] Rodar `tests/cli_render.rs`. Novos 4 testes verdes; os 10 originais continuam.
+- [X] T017 [US2] Estender `render_and_write` em `src/render.rs`: (1) se `args.dry_run` → `io::stdout().write_all(rendered.as_bytes())?`; retornar `RenderOutcome { output_path: None, bytes_written: rendered.len() as u64, overwrote_existing: false, dry_run: true }`; (2) senão continua fluxo atual (T013).
+- [X] T018 [US2] Estender `handle_render`: se `outcome.dry_run` → não imprime linha `Renderizado em ...` (mantém stdout limpo pro pipe). Emitir `tracing::warn!` se `args.dry_run && args.output.is_some()` (D-08 do research).
+- [X] T019 [US2] Rodar `tests/cli_render.rs`. Novos 4 testes verdes; os 10 originais continuam.
 
 **Checkpoint**: `render --dry-run` pipeável, byte-identical, ignora `--output`.
 

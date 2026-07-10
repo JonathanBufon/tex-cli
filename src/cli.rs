@@ -376,6 +376,10 @@ pub fn handle_render(args: RenderArgs) -> Result<()> {
         }
     };
 
+    if args.dry_run && args.output.is_some() {
+        tracing::warn!("--output ignorado porque --dry-run está ativo");
+    }
+
     let expanded_output = match args.output.as_deref() {
         Some(p) => Some(crate::paths::expand_user_path(&p.display().to_string())?),
         None => None,

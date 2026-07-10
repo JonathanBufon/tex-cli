@@ -232,6 +232,105 @@ fn render_overwrite_without_force_non_tty_exits_15() {
 }
 
 #[test]
+fn render_dry_run_prints_to_stdout_and_no_file() {
+    let home = TempDir::new().unwrap();
+    let templates = home.path().join("t");
+    let output = home.path().join("o");
+    std::fs::create_dir_all(&output).unwrap();
+    seed_template(&templates, "artigo", "Hello, {{ x }}.\n");
+    write_config(&home, &templates, &output);
+
+    let data = home.path().join("d.json");
+    std::fs::write(&data, br#"{"x":"World"}"#).unwrap();
+
+    let assert = render_cmd(&home)
+        .args(["artigo", data.to_str().unwrap(), "--dry-run"])
+        .assert()
+        .success();
+    let out_bytes = assert.get_output().stdout.clone();
+    let stdout = String::from_utf8(out_bytes).unwrap();
+    assert!(stdout.contains("Hello, World."));
+    assert!(!stdout.contains("Renderizado em"));
+    assert!(!output.join("artigo.tex").exists());
+}
+
+#[test]
+fn render_dry_run_byte_identical_to_written_file() {
+    let home = TempDir::new().unwrap();
+    let templates = home.path().join("t");
+    let output = home.path().join("o");
+    std::fs::create_dir_all(&output).unwrap();
+    seed_template(&templates, "artigo", "A: {{ a }}\nB: {{ b }}\n");
+    write_config(&home, &templates, &output);
+
+    let data = home.path().join("d.json");
+    std::fs::write(&data, br#"{"a":"1","b":"2"}"#).unwrap();
+
+    // Dry-run capture.
+    let dry_bytes = render_cmd(&home)
+        .args(["artigo", data.to_str().unwrap(), "--dry-run"])
+        .output()
+        .unwrap()
+        .stdout;
+
+    // Normal run.
+    render_cmd(&home)
+        .args(["artigo", data.to_str().unwrap()])
+        .assert()
+        .success();
+    let file_bytes = std::fs::read(output.join("artigo.tex")).unwrap();
+
+    assert_eq!(dry_bytes, file_bytes, "dry-run stdout must equal file bytes");
+}
+
+#[test]
+fn render_dry_run_ignores_output_flag() {
+    let home = TempDir::new().unwrap();
+    let templates = home.path().join("t");
+    let output = home.path().join("o");
+    std::fs::create_dir_all(&output).unwrap();
+    seed_template(&templates, "artigo", "{{ x }}\n");
+    write_config(&home, &templates, &output);
+
+    let data = home.path().join("d.json");
+    std::fs::write(&data, br#"{"x":"Y"}"#).unwrap();
+
+    let custom = home.path().join("custom.tex");
+    render_cmd(&home)
+        .args([
+            "artigo",
+            data.to_str().unwrap(),
+            "--dry-run",
+            "--output",
+        ])
+        .arg(custom.to_str().unwrap())
+        .assert()
+        .success();
+
+    assert!(!custom.exists(), "custom output must not be created in dry-run");
+    assert!(!output.join("artigo.tex").exists());
+}
+
+#[test]
+fn render_dry_run_still_returns_tera_error() {
+    let home = TempDir::new().unwrap();
+    let templates = home.path().join("t");
+    let output = home.path().join("o");
+    std::fs::create_dir_all(&output).unwrap();
+    seed_template(&templates, "artigo", "{{ ausente }}\n");
+    write_config(&home, &templates, &output);
+
+    let data = home.path().join("d.json");
+    std::fs::write(&data, br#"{}"#).unwrap();
+
+    render_cmd(&home)
+        .args(["artigo", data.to_str().unwrap(), "--dry-run"])
+        .assert()
+        .failure()
+        .code(30);
+}
+
+#[test]
 fn render_force_overwrites_existing() {
     let home = TempDir::new().unwrap();
     let templates = home.path().join("t");
