@@ -1,5 +1,6 @@
 pub mod atomic;
 pub mod cli;
+pub mod compiler;
 pub mod config;
 pub mod errors;
 pub mod interactive;

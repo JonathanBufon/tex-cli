@@ -8,8 +8,9 @@ use std::str::FromStr;
 use crate::config::{render_humano, Config, ConfigKey};
 use crate::errors::TexError;
 use crate::interactive::{
-    confirm_create_dir, confirm_dry_run, confirm_overwrite, confirm_overwrite_template,
-    confirm_remove_template, prompt_json_source, prompt_source_path, prompt_template_name,
+    confirm_compile_overwrite, confirm_create_dir, confirm_dry_run, confirm_keep_logs,
+    confirm_keep_tex, confirm_overwrite, confirm_overwrite_template, confirm_remove_template,
+    prompt_json_source, prompt_source_path, prompt_template_name, prompt_tex_source,
     run_init_prompts, template_menu, TemplateMenuAction,
 };
 use crate::paths::config_file_path;
@@ -52,6 +53,44 @@ pub enum Commands {
 
     /// Renderiza um template com dados JSON, produzindo um `.tex`.
     Render(RenderArgs),
+
+    /// Compila um `.tex` para PDF usando o engine configurado.
+    Compile(CompileArgs),
+}
+
+#[derive(Debug, clap::Args)]
+pub struct CompileArgs {
+    /// Path do arquivo `.tex` a compilar. Ausente → modo interativo.
+    pub tex_file: Option<std::path::PathBuf>,
+
+    /// Caminho custom do PDF final. Default: `paths.output_dir/<basename>.pdf`.
+    #[arg(short = 'o', long)]
+    pub output: Option<std::path::PathBuf>,
+
+    /// Engine LaTeX (`tectonic`, `latexmk`, `pdflatex`, `xelatex`, `lualatex`).
+    /// Sobrescreve `compiler.engine` do config só nesta invocação.
+    #[arg(short = 'e', long)]
+    pub engine: Option<String>,
+
+    /// Copia o `.tex` fonte para `output_dir` ao final.
+    #[arg(long, conflicts_with = "no_keep_tex")]
+    pub keep_tex: bool,
+
+    /// Não copia o `.tex` (sobrescreve `compiler.keep_tex=true` do config).
+    #[arg(long = "no-keep-tex", conflicts_with = "keep_tex")]
+    pub no_keep_tex: bool,
+
+    /// Copia o `.log` do engine para `output_dir` ao final.
+    #[arg(long, conflicts_with = "no_keep_logs")]
+    pub keep_logs: bool,
+
+    /// Não copia o `.log` (sobrescreve `compiler.keep_logs=true` do config).
+    #[arg(long = "no-keep-logs", conflicts_with = "keep_logs")]
+    pub no_keep_logs: bool,
+
+    /// Sobrescreve PDF existente sem pedir confirmação.
+    #[arg(long)]
+    pub force: bool,
 }
 
 #[derive(Debug, clap::Args)]
@@ -361,6 +400,137 @@ pub fn handle_templates_remove(name: String, force: bool) -> Result<()> {
 
     let removed_path = remove_template(dir, &name, true)?;
     println!("Template '{name}' removido de {}.", removed_path.display());
+    Ok(())
+}
+
+pub fn handle_compile(args: CompileArgs) -> Result<()> {
+    use std::io::IsTerminal;
+
+    let cfg_path = config_file_path()?;
+    let cfg = Config::load(&cfg_path)?;
+
+    let tex_file = match args.tex_file.as_ref() {
+        Some(p) => p.clone(),
+        None => return handle_compile_menu(&cfg),
+    };
+
+    let tex_path = crate::paths::expand_user_path(&tex_file.display().to_string())?;
+
+    let engine = crate::compiler::resolve_engine(args.engine.as_deref(), &cfg.compiler.engine)?;
+
+    let output_pdf = match args.output.as_ref() {
+        Some(p) => crate::paths::expand_user_path(&p.display().to_string())?,
+        None => {
+            let basename = tex_path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .ok_or_else(|| anyhow!("caminho do .tex fonte inválido"))?;
+            cfg.paths.output_dir.join(format!("{basename}.pdf"))
+        }
+    };
+
+    let keep_tex = if args.keep_tex {
+        true
+    } else if args.no_keep_tex {
+        false
+    } else {
+        cfg.compiler.keep_tex
+    };
+
+    let keep_logs = if args.keep_logs {
+        true
+    } else if args.no_keep_logs {
+        false
+    } else {
+        cfg.compiler.keep_logs
+    };
+
+    if output_pdf.exists() && !args.force {
+        let confirmed = if std::io::stdin().is_terminal() {
+            confirm_compile_overwrite(&output_pdf)?
+        } else {
+            eprintln!(
+                "Arquivo {} já existe. Use --force ou execute em terminal interativo.",
+                output_pdf.display()
+            );
+            false
+        };
+        if !confirmed {
+            return Err(anyhow::Error::new(TexError::UserAborted));
+        }
+    }
+
+    let outcome = crate::compiler::compile_and_write(
+        &cfg,
+        &tex_path,
+        engine,
+        &output_pdf,
+        keep_tex,
+        keep_logs,
+        args.force,
+        0,
+    )?;
+
+    print_compile_outcome(&outcome);
+    Ok(())
+}
+
+fn print_compile_outcome(outcome: &crate::compiler::CompileOutcome) {
+    let secs = outcome.duration.as_secs_f32();
+    if outcome.overwrote_existing {
+        println!(
+            "PDF gerado (sobrescrito) em {}. Compilação levou {:.1}s.",
+            outcome.pdf_path.display(),
+            secs
+        );
+    } else {
+        println!(
+            "PDF gerado em {}. Compilação levou {:.1}s.",
+            outcome.pdf_path.display(),
+            secs
+        );
+    }
+}
+
+fn handle_compile_menu(cfg: &Config) -> Result<()> {
+    use std::io::IsTerminal;
+
+    if !std::io::stdin().is_terminal() {
+        return Err(anyhow!(
+            "Menu interativo de compile requer terminal. Use tex-cli compile <tex-file>."
+        ));
+    }
+
+    let tex_path = prompt_tex_source()?;
+    let keep_tex = confirm_keep_tex(cfg.compiler.keep_tex)?;
+    let keep_logs = confirm_keep_logs(cfg.compiler.keep_logs)?;
+
+    let tex_path = crate::paths::expand_user_path(&tex_path.display().to_string())?;
+
+    let engine = crate::compiler::resolve_engine(None, &cfg.compiler.engine)?;
+
+    let basename = tex_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .ok_or_else(|| anyhow!("caminho do .tex fonte inválido"))?;
+    let output_pdf = cfg.paths.output_dir.join(format!("{basename}.pdf"));
+
+    if output_pdf.exists() && !confirm_compile_overwrite(&output_pdf)? {
+        return Err(anyhow::Error::new(TexError::UserAborted));
+    }
+
+    let outcome = crate::compiler::compile_and_write(
+        cfg,
+        &tex_path,
+        engine,
+        &output_pdf,
+        keep_tex,
+        keep_logs,
+        false,
+        0,
+    )?;
+
+    print_compile_outcome(&outcome);
     Ok(())
 }
 

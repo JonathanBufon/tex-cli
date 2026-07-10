@@ -250,6 +250,37 @@ done
 
 ---
 
+## 7b. Baselines medidos (T031)
+
+Executado em `2026-07-10` dentro do container Docker sancionado
+(Debian trixie + Tectonic 0.16.9), binário release, template
+`artigo-basico.tex` (~2.5 KB, renderizado a partir do JSON de exemplo):
+
+| Métrica                                              | Alvo    | Medido    |
+|------------------------------------------------------|---------|-----------|
+| SC-001 · `compile` (tectonic, artigo simples)         | <15 s   | **1.7–2.2 s** |
+| Build inicial `cargo build --release` (cold)           | —       | ~5 s      |
+| Suíte `cargo test --test cli_compile` (real tectonic)  | —       | ~90 s     |
+| `cargo fmt --check` + `clippy -D warnings`            | zero    | zero      |
+
+SC-005 (config imutável após `--engine`) validado por
+`compile_engine_flag_overrides_config_and_config_stays_unchanged`
+(T018).
+
+SC-006 (zero artefato do TempDir) validado por
+`compile_leaves_no_artefacts_in_tmp` (T005, refatorado em T020 para
+usar TMPDIR isolado).
+
+Pipeline JSON → PDF end-to-end confirmado no `§ 3` do quickstart:
+
+```bash
+tex-cli init --templates-dir /tmp/tpl --output-dir /tmp/out --engine tectonic --create-dirs --force
+tex-cli templates add examples/templates/artigo-basico.tex
+tex-cli render artigo-basico examples/data/artigo-basico.json
+tex-cli compile /tmp/out/artigo-basico.tex
+# → PDF gerado em /tmp/out/artigo-basico.pdf. Compilação levou 1.8s.
+```
+
 ## 8. Troubleshooting
 
 | Sintoma                                              | Causa provável                              | Ação                                           |
