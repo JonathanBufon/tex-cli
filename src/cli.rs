@@ -52,6 +52,44 @@ pub enum Commands {
 
     /// Renderiza um template com dados JSON, produzindo um `.tex`.
     Render(RenderArgs),
+
+    /// Compila um `.tex` para PDF usando o engine configurado.
+    Compile(CompileArgs),
+}
+
+#[derive(Debug, clap::Args)]
+pub struct CompileArgs {
+    /// Path do arquivo `.tex` a compilar. Ausente → modo interativo.
+    pub tex_file: Option<std::path::PathBuf>,
+
+    /// Caminho custom do PDF final. Default: `paths.output_dir/<basename>.pdf`.
+    #[arg(short = 'o', long)]
+    pub output: Option<std::path::PathBuf>,
+
+    /// Engine LaTeX (`tectonic`, `latexmk`, `pdflatex`, `xelatex`, `lualatex`).
+    /// Sobrescreve `compiler.engine` do config só nesta invocação.
+    #[arg(short = 'e', long)]
+    pub engine: Option<String>,
+
+    /// Copia o `.tex` fonte para `output_dir` ao final.
+    #[arg(long, conflicts_with = "no_keep_tex")]
+    pub keep_tex: bool,
+
+    /// Não copia o `.tex` (sobrescreve `compiler.keep_tex=true` do config).
+    #[arg(long = "no-keep-tex", conflicts_with = "keep_tex")]
+    pub no_keep_tex: bool,
+
+    /// Copia o `.log` do engine para `output_dir` ao final.
+    #[arg(long, conflicts_with = "no_keep_logs")]
+    pub keep_logs: bool,
+
+    /// Não copia o `.log` (sobrescreve `compiler.keep_logs=true` do config).
+    #[arg(long = "no-keep-logs", conflicts_with = "keep_logs")]
+    pub no_keep_logs: bool,
+
+    /// Sobrescreve PDF existente sem pedir confirmação.
+    #[arg(long)]
+    pub force: bool,
 }
 
 #[derive(Debug, clap::Args)]
@@ -362,6 +400,10 @@ pub fn handle_templates_remove(name: String, force: bool) -> Result<()> {
     let removed_path = remove_template(dir, &name, true)?;
     println!("Template '{name}' removido de {}.", removed_path.display());
     Ok(())
+}
+
+pub fn handle_compile(_args: CompileArgs) -> Result<()> {
+    Err(anyhow!("handle_compile: não implementado"))
 }
 
 pub fn handle_render(args: RenderArgs) -> Result<()> {
