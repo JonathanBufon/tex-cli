@@ -70,7 +70,7 @@ description: "Task list for feature 003-render-tera"
   - `render_templates_dir_missing_exits_22`.
   - `render_overwrite_without_force_non_tty_exits_15`: arquivo pré-existente + assert_cmd (não-TTY) → exit 15, arquivo original intacto.
   - `render_force_overwrites_existing`: `--force` → sobrescreve, stdout `Renderizado (sobrescrito)`.
-- [ ] T008 [P] [US1] Unit tests inline em `src/render.rs` cobrindo `render_template`:
+- [X] T008 [P] [US1] Unit tests inline em `src/render.rs` cobrindo `render_template`:
   - `render_template_basic`: template `"Olá, {{ nome }}."` + `{"nome":"X"}` → `"Olá, X."`.
   - `render_template_missing_var_returns_tera_error`: template com `{{ ausente }}` + `{}` → `Err(TexError::TeraRenderError { template_name: "test", .. })`.
   - `render_template_uses_default_filter`: `{{ x | default(value="Y") }}` + `{}` → `"Y"`.
@@ -80,19 +80,19 @@ description: "Task list for feature 003-render-tera"
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Implementar `struct RenderArgs` (já definido em src/cli.rs pelo T006) e `struct RenderOutcome { output_path: Option<PathBuf>, bytes_written: u64, overwrote_existing: bool, dry_run: bool }` em `src/render.rs` conforme data-model.md.
-- [ ] T010 [US1] Implementar `pub fn render_template(template_name: &str, template_src: &str, json_value: &serde_json::Value) -> Result<String, TexError>` em `src/render.rs`: (1) `if !json_value.is_object() → return Err(TexError::InvalidJson { source: "<template context>".into(), detail: format!("esperado objeto no topo, recebido {}", type_name(json_value)) })`; (2) `let ctx = tera::Context::from_value(json_value.clone()).map_err(|e| TexError::InvalidJson { .. })?`; (3) `tera::Tera::one_off(template_src, &ctx, false).map_err(|e| TexError::TeraRenderError { template_name: template_name.to_string(), detail: e.to_string() })`. Helper `fn type_name(v: &serde_json::Value) -> &'static str` retorna "object"/"array"/"string"/etc. Depende de T002, T009.
-- [ ] T011 [P] [US1] Implementar `pub fn load_json_source(source: &str) -> Result<serde_json::Value, TexError>` em `src/render.rs` conforme D-04: (1) se `source == "-"`: `io::stdin().read_to_string`; senão `fs::read_to_string(source)` (mapeando `PermissionDenied` → `TexError::PermissionDenied`); (2) `if content.trim().is_empty() → Err(TexError::InvalidJson { source: display, detail: "sem conteúdo".into() })`; (3) `serde_json::from_str::<Value>(&content).map_err(|e| TexError::InvalidJson { source, detail: e.to_string() })`. Display source = "stdin" ou path.
-- [ ] T012 [US1] Implementar `pub fn resolve_output_path(cfg: &Config, args: &RenderArgs) -> Result<PathBuf, TexError>` em `src/render.rs`: se `args.output = Some(path)` → `paths::expand_user_path(path)`; senão → `cfg.paths.output_dir.join(format!("{}.tex", args.template_name))`.
-- [ ] T013 [US1] Implementar `pub fn render_and_write(args: &RenderArgs, cfg: &Config) -> Result<RenderOutcome, TexError>` em `src/render.rs` conforme data-model.md fluxo: read_template → load_json_source → render_template → write_atomic (via `crate::atomic::write_atomic(&path, rendered.as_bytes(), 0o644)`). Cria dirs pais via `fs::create_dir_all(path.parent())` antes do write. Retorna `RenderOutcome`. Depende de T010, T011, T012, T003.
-- [ ] T014 [US1] Implementar `handle_render(args: RenderArgs)` em `src/cli.rs`:
+- [X] T009 [US1] Implementar `struct RenderArgs` (já definido em src/cli.rs pelo T006) e `struct RenderOutcome { output_path: Option<PathBuf>, bytes_written: u64, overwrote_existing: bool, dry_run: bool }` em `src/render.rs` conforme data-model.md.
+- [X] T010 [US1] Implementar `pub fn render_template(template_name: &str, template_src: &str, json_value: &serde_json::Value) -> Result<String, TexError>` em `src/render.rs`: (1) `if !json_value.is_object() → return Err(TexError::InvalidJson { source: "<template context>".into(), detail: format!("esperado objeto no topo, recebido {}", type_name(json_value)) })`; (2) `let ctx = tera::Context::from_value(json_value.clone()).map_err(|e| TexError::InvalidJson { .. })?`; (3) `tera::Tera::one_off(template_src, &ctx, false).map_err(|e| TexError::TeraRenderError { template_name: template_name.to_string(), detail: e.to_string() })`. Helper `fn type_name(v: &serde_json::Value) -> &'static str` retorna "object"/"array"/"string"/etc. Depende de T002, T009.
+- [X] T011 [P] [US1] Implementar `pub fn load_json_source(source: &str) -> Result<serde_json::Value, TexError>` em `src/render.rs` conforme D-04: (1) se `source == "-"`: `io::stdin().read_to_string`; senão `fs::read_to_string(source)` (mapeando `PermissionDenied` → `TexError::PermissionDenied`); (2) `if content.trim().is_empty() → Err(TexError::InvalidJson { source: display, detail: "sem conteúdo".into() })`; (3) `serde_json::from_str::<Value>(&content).map_err(|e| TexError::InvalidJson { source, detail: e.to_string() })`. Display source = "stdin" ou path.
+- [X] T012 [US1] Implementar `pub fn resolve_output_path(cfg: &Config, args: &RenderArgs) -> Result<PathBuf, TexError>` em `src/render.rs`: se `args.output = Some(path)` → `paths::expand_user_path(path)`; senão → `cfg.paths.output_dir.join(format!("{}.tex", args.template_name))`.
+- [X] T013 [US1] Implementar `pub fn render_and_write(args: &RenderArgs, cfg: &Config) -> Result<RenderOutcome, TexError>` em `src/render.rs` conforme data-model.md fluxo: read_template → load_json_source → render_template → write_atomic (via `crate::atomic::write_atomic(&path, rendered.as_bytes(), 0o644)`). Cria dirs pais via `fs::create_dir_all(path.parent())` antes do write. Retorna `RenderOutcome`. Depende de T010, T011, T012, T003.
+- [X] T014 [US1] Implementar `handle_render(args: RenderArgs)` em `src/cli.rs`:
   1. Load config (exit 10/11).
   2. Se `args.template_name.is_none() || args.data_source.is_none()` → delega para `handle_render_menu()` (implementado em Phase 6 US4; por enquanto retorna `anyhow!("modo interativo requer args em US1 — implementado na US4")` para preservar green US1 sem menu).
   3. Constrói `RenderArgs` "concreto" (unwrap dos Options).
   4. Chama `render_and_write(&args, &cfg)?`.
   5. stdout: `Renderizado em {path}.` ou `Renderizado (sobrescrito) em {path}.` baseado em `overwrote_existing`.
   6. Depende de T013.
-- [ ] T015 [US1] Rodar `tests/cli_render.rs` no container. Todos os 10 testes de US1 devem passar. Ajustar mensagens até casarem com predicates. Rodar `cargo test --lib render` para confirmar unit tests inline verdes.
+- [X] T015 [US1] Rodar `tests/cli_render.rs` no container. Todos os 10 testes de US1 devem passar. Ajustar mensagens até casarem com predicates. Rodar `cargo test --lib render` para confirmar unit tests inline verdes.
 
 **Checkpoint**: MVP funcional. `tex-cli render greeting /tmp/data.json` produz `.tex` renderizado no output_dir. Container: `cargo test --test cli_render` verde.
 

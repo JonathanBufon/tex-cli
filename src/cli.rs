@@ -363,8 +363,47 @@ pub fn handle_templates_remove(name: String, force: bool) -> Result<()> {
     Ok(())
 }
 
-pub fn handle_render(_args: RenderArgs) -> Result<()> {
-    Err(anyhow!("handle_render: não implementado"))
+pub fn handle_render(args: RenderArgs) -> Result<()> {
+    let path = config_file_path()?;
+    let cfg = Config::load(&path)?;
+
+    let (template_name, data_source) = match (&args.template_name, &args.data_source) {
+        (Some(t), Some(d)) => (t.clone(), d.clone()),
+        _ => {
+            return Err(anyhow!(
+                "modo interativo será implementado na US4. Use tex-cli render <template> <data.json>."
+            ));
+        }
+    };
+
+    let expanded_output = match args.output.as_deref() {
+        Some(p) => Some(crate::paths::expand_user_path(&p.display().to_string())?),
+        None => None,
+    };
+
+    let outcome = crate::render::render_and_write(
+        &cfg,
+        &template_name,
+        &data_source,
+        expanded_output.as_deref(),
+        args.force,
+        args.dry_run,
+    )?;
+
+    if outcome.dry_run {
+        return Ok(());
+    }
+
+    let path = outcome
+        .output_path
+        .as_ref()
+        .expect("output_path is Some when dry_run is false");
+    if outcome.overwrote_existing {
+        println!("Renderizado (sobrescrito) em {}.", path.display());
+    } else {
+        println!("Renderizado em {}.", path.display());
+    }
+    Ok(())
 }
 
 pub fn handle_templates_menu() -> Result<()> {
