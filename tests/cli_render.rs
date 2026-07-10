@@ -331,6 +331,64 @@ fn render_dry_run_still_returns_tera_error() {
 }
 
 #[test]
+fn render_stdin_json_dash_arg() {
+    let home = TempDir::new().unwrap();
+    let templates = home.path().join("t");
+    let output = home.path().join("o");
+    std::fs::create_dir_all(&output).unwrap();
+    seed_template(&templates, "artigo", "Olá, {{ nome }}.\n");
+    write_config(&home, &templates, &output);
+
+    render_cmd(&home)
+        .args(["artigo", "-"])
+        .write_stdin(r#"{"nome":"Ana"}"#)
+        .assert()
+        .success();
+
+    assert!(output.join("artigo.tex").exists());
+    assert_eq!(
+        std::fs::read(output.join("artigo.tex")).unwrap(),
+        b"Ol\xc3\xa1, Ana.\n"
+    );
+}
+
+#[test]
+fn render_stdin_empty_exits_31() {
+    let home = TempDir::new().unwrap();
+    let templates = home.path().join("t");
+    let output = home.path().join("o");
+    std::fs::create_dir_all(&output).unwrap();
+    seed_template(&templates, "artigo", "{{ x }}\n");
+    write_config(&home, &templates, &output);
+
+    render_cmd(&home)
+        .args(["artigo", "-"])
+        .write_stdin("")
+        .assert()
+        .failure()
+        .code(31)
+        .stderr(predicate::str::contains("stdin"));
+}
+
+#[test]
+fn render_stdin_malformed_exits_31() {
+    let home = TempDir::new().unwrap();
+    let templates = home.path().join("t");
+    let output = home.path().join("o");
+    std::fs::create_dir_all(&output).unwrap();
+    seed_template(&templates, "artigo", "{{ x }}\n");
+    write_config(&home, &templates, &output);
+
+    render_cmd(&home)
+        .args(["artigo", "-"])
+        .write_stdin("not json {")
+        .assert()
+        .failure()
+        .code(31)
+        .stderr(predicate::str::contains("stdin"));
+}
+
+#[test]
 fn render_force_overwrites_existing() {
     let home = TempDir::new().unwrap();
     let templates = home.path().join("t");

@@ -130,14 +130,14 @@ description: "Task list for feature 003-render-tera"
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T020 [P] [US3] Estender `tests/cli_render.rs`:
+- [X] T020 [P] [US3] Estender `tests/cli_render.rs`:
   - `render_stdin_json_dash_arg`: `write_stdin('{"nome":"X"}')` + arg `-` → mesmo output esperado que arquivo equivalente.
   - `render_stdin_empty_exits_31`: stdin vazio + arg `-` → exit 31, stderr `sem conteúdo`.
   - `render_stdin_malformed_exits_31`: stdin com `not json` → exit 31, stderr `stdin` no source.
 
 ### Implementation for User Story 3
 
-- [ ] T021 [US3] `load_json_source` já cobre este caso via T011. **Nenhuma nova implementação necessária.** Task é apenas validar via `tests/cli_render.rs` que os 3 testes passam. Se algum falhar, ajustar a mensagem de erro em `load_json_source` (ex.: mudar detail de `sem conteúdo` para casar com predicate).
+- [X] T021 [US3] `load_json_source` já cobre este caso via T011. **Nenhuma nova implementação necessária.** Task é apenas validar via `tests/cli_render.rs` que os 3 testes passam. Se algum falhar, ajustar a mensagem de erro em `load_json_source` (ex.: mudar detail de `sem conteúdo` para casar com predicate).
 
 **Checkpoint**: Composição Unix via stdin funciona.
 
