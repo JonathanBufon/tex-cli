@@ -69,17 +69,17 @@ description: "Task list for feature 005-build-pipeline"
   - `build_missing_config_exits_10`.
   - `build_overwrite_without_force_non_tty_exits_15`: PDF existente + `!--force` + sem TTY.
   - `build_force_overwrites_existing_pdf`: `--force` → sobrescreve, stdout menciona "sobrescrito".
-- [ ] T005 [P] [US1] Unit tests inline em `src/build.rs` (`#[cfg(test)] mod tests`) cobrindo:
+- [X] T005 [P] [US1] Unit tests inline em `src/build.rs` (`#[cfg(test)] mod tests`) cobrindo:
   - `resolve_output_pdf_default`: sem `--output` → `<output_dir>/<name>.pdf`.
   - `resolve_output_pdf_custom`: com `--output` → path expandido.
   - `resolve_intermediate_tex_path`: retorna `<output_dir>/<name>.tex`.
 
 ### Implementation for User Story 1
 
-- [ ] T006 [P] [US1] Implementar `pub struct BuildOutcome` em `src/build.rs` conforme data-model.md D-04: campos `pdf_path`, `total_duration`, `render_duration`, `compile_duration`, `bytes_written`, `overwrote_existing`, `kept_tex`, `kept_logs`, `intermediate_tex_path: Option<PathBuf>`.
-- [ ] T007 [P] [US1] Implementar `pub fn resolve_output_pdf(cfg: &Config, template_name: &str, output: Option<&Path>) -> PathBuf` em `src/build.rs`: `output` presente → `paths::expand_user_path`; ausente → `cfg.paths.output_dir.join(format!("{template_name}.pdf"))`.
-- [ ] T008 [P] [US1] Implementar `pub fn resolve_intermediate_tex_path(cfg: &Config, template_name: &str) -> PathBuf` em `src/build.rs`: retorna `cfg.paths.output_dir.join(format!("{template_name}.tex"))`.
-- [ ] T009 [US1] Implementar `pub fn build_pipeline(cfg: &Config, template_name: &str, data_source: &str, output_pdf: &Path, engine: SupportedEngine, keep_tex: bool, keep_logs: bool, force: bool, verbose: u8) -> Result<BuildOutcome, TexError>` em `src/build.rs` conforme fluxo do data-model.md:
+- [X] T006 [P] [US1] Implementar `pub struct BuildOutcome` em `src/build.rs` conforme data-model.md D-04: campos `pdf_path`, `total_duration`, `render_duration`, `compile_duration`, `bytes_written`, `overwrote_existing`, `kept_tex`, `kept_logs`, `intermediate_tex_path: Option<PathBuf>`.
+- [X] T007 [P] [US1] Implementar `pub fn resolve_output_pdf(cfg: &Config, template_name: &str, output: Option<&Path>) -> PathBuf` em `src/build.rs`: `output` presente → `paths::expand_user_path`; ausente → `cfg.paths.output_dir.join(format!("{template_name}.pdf"))`.
+- [X] T008 [P] [US1] Implementar `pub fn resolve_intermediate_tex_path(cfg: &Config, template_name: &str) -> PathBuf` em `src/build.rs`: retorna `cfg.paths.output_dir.join(format!("{template_name}.tex"))`.
+- [X] T009 [US1] Implementar `pub fn build_pipeline(cfg: &Config, template_name: &str, data_source: &str, output_pdf: &Path, engine: SupportedEngine, keep_tex: bool, keep_logs: bool, force: bool, verbose: u8) -> Result<BuildOutcome, TexError>` em `src/build.rs` conforme fluxo do data-model.md:
   1. `let start_total = Instant::now();`
   2. `let template_bytes = templates::read_template(&cfg.paths.templates_dir, template_name)?`.
   3. `let template_src = std::str::from_utf8(&template_bytes).map_err(...)?`.
@@ -96,7 +96,7 @@ description: "Task list for feature 005-build-pipeline"
   14. `let compile_duration = start_compile.elapsed();`
   15. Log `tracing::info!("Compile concluído em {}s", compile_duration.as_secs_f32())`.
   16. Constrói `BuildOutcome { pdf_path: output_pdf.to_path_buf(), total_duration: start_total.elapsed(), render_duration, compile_duration, bytes_written: compile_outcome.bytes_written, overwrote_existing: compile_outcome.overwrote_existing, kept_tex: keep_tex, kept_logs: keep_logs, intermediate_tex_path }`.
-- [ ] T010 [US1] Implementar `handle_build(args: BuildArgs)` em `src/cli.rs`:
+- [X] T010 [US1] Implementar `handle_build(args: BuildArgs)` em `src/cli.rs`:
   1. Load config (exit 10/11).
   2. Se `args.template_name.is_none() || args.data_source.is_none()` → delega para `handle_build_menu(&cfg)` (implementado em US4; por ora placeholder `anyhow!("modo interativo será implementado na US4")`).
   3. Expandir args positionais.
@@ -109,7 +109,7 @@ description: "Task list for feature 005-build-pipeline"
      - `overwrote_existing = true` → `PDF gerado (sobrescrito) em {path}. Pipeline (render + compile) levou {sec:.1}s.`
      - senão → `PDF gerado em {path}. Pipeline (render + compile) levou {sec:.1}s.`
   10. Depende de T009.
-- [ ] T011 [US1] Rodar `tests/cli_build.rs` no container. Todos os 13 testes de US1 devem passar. Ajustar mensagens/regex até casarem com predicates. Rodar `cargo test --lib build` para confirmar unit tests inline verdes.
+- [X] T011 [US1] Rodar `tests/cli_build.rs` no container. Todos os 13 testes de US1 devem passar. Ajustar mensagens/regex até casarem com predicates. Rodar `cargo test --lib build` para confirmar unit tests inline verdes.
 
 **Checkpoint**: MVP funcional. `tex-cli build <tpl> <data>` produz PDF válido no output_dir. Container: `cargo test --test cli_build` verde.
 

@@ -444,8 +444,85 @@ pub fn handle_templates_remove(name: String, force: bool) -> Result<()> {
     Ok(())
 }
 
-pub fn handle_build(_args: BuildArgs) -> Result<()> {
-    Err(anyhow!("handle_build: não implementado"))
+pub fn handle_build(args: BuildArgs) -> Result<()> {
+    use std::io::IsTerminal;
+
+    let path = config_file_path()?;
+    let cfg = Config::load(&path)?;
+
+    let (template_name, data_source) = match (&args.template_name, &args.data_source) {
+        (Some(t), Some(d)) => (t.clone(), d.clone()),
+        _ => {
+            return Err(anyhow!(
+                "modo interativo será implementado na US4. Use tex-cli build <template> <data.json>."
+            ));
+        }
+    };
+
+    let engine = crate::compiler::resolve_engine(args.engine.as_deref(), &cfg.compiler.engine)?;
+
+    let output_pdf = match args.output.as_ref() {
+        Some(p) => crate::paths::expand_user_path(&p.display().to_string())?,
+        None => crate::build::resolve_output_pdf(&cfg, &template_name, None),
+    };
+
+    let keep_tex = if args.keep_tex {
+        true
+    } else if args.no_keep_tex {
+        false
+    } else {
+        cfg.compiler.keep_tex
+    };
+    let keep_logs = if args.keep_logs {
+        true
+    } else if args.no_keep_logs {
+        false
+    } else {
+        cfg.compiler.keep_logs
+    };
+
+    if output_pdf.exists() && !args.force {
+        let confirmed = if std::io::stdin().is_terminal() {
+            confirm_compile_overwrite(&output_pdf)?
+        } else {
+            eprintln!(
+                "Arquivo {} já existe. Use --force ou execute em terminal interativo.",
+                output_pdf.display()
+            );
+            false
+        };
+        if !confirmed {
+            return Err(anyhow::Error::new(TexError::UserAborted));
+        }
+    }
+
+    let outcome = crate::build::build_pipeline(
+        &cfg,
+        &template_name,
+        &data_source,
+        &output_pdf,
+        engine,
+        keep_tex,
+        keep_logs,
+        args.force,
+        0,
+    )?;
+
+    let secs = outcome.total_duration.as_secs_f32();
+    if outcome.overwrote_existing {
+        println!(
+            "PDF gerado (sobrescrito) em {}. Pipeline (render + compile) levou {:.1}s.",
+            outcome.pdf_path.display(),
+            secs
+        );
+    } else {
+        println!(
+            "PDF gerado em {}. Pipeline (render + compile) levou {:.1}s.",
+            outcome.pdf_path.display(),
+            secs
+        );
+    }
+    Ok(())
 }
 
 pub fn handle_compile(args: CompileArgs) -> Result<()> {
