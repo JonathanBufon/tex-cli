@@ -172,10 +172,10 @@ description: "Task list for feature 003-render-tera"
 
 **Purpose**: Verificações transversais, higiene, docs, examples, validação de performance.
 
-- [ ] T026 [P] Estender `tests/cli_banner.rs` (existente) para cobrir `render`:
+- [X] T026 [P] Estender `tests/cli_banner.rs` (existente) para cobrir `render`:
   - `banner_appears_on_render_stderr` — invoca `render` com args válidos, valida marker em stderr.
   - `banner_never_leaks_on_render_dry_run` — `render ... --dry-run`, verifica que **nenhuma linha do banner asset** aparece em stdout (protege pipe pra `less`/`jq`).
-- [ ] T027 [P] Rodar `cargo fmt --all -- --check` e `cargo clippy --all-targets --all-features -- -D warnings` no container. Corrigir violações.
+- [X] T027 [P] Rodar `cargo fmt --all -- --check` e `cargo clippy --all-targets --all-features -- -D warnings` no container. Corrigir violações.
 - [ ] T028 [P] Estender `README.md` da raiz: seção "Renderizar JSON → .tex" com exemplos dos 4 fluxos principais (arquivo, dry-run, stdin, menu interativo). Atualizar tabela de exit codes com 30/31. Adicionar linha ao roadmap indicando spec 004 (compile) como próxima.
 - [ ] T029 [P] Adicionar template + JSON de exemplo em `examples/`:
   - `examples/data/greeting.json` — objeto com 2-3 campos.

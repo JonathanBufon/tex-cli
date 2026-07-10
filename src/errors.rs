@@ -63,10 +63,7 @@ pub enum TexError {
     },
 
     #[error("JSON inválido em {source_name}: {detail}")]
-    InvalidJson {
-        source_name: String,
-        detail: String,
-    },
+    InvalidJson { source_name: String, detail: String },
 
     #[error("Erro de I/O: {0}")]
     Io(#[from] std::io::Error),

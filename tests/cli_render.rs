@@ -280,7 +280,10 @@ fn render_dry_run_byte_identical_to_written_file() {
         .success();
     let file_bytes = std::fs::read(output.join("artigo.tex")).unwrap();
 
-    assert_eq!(dry_bytes, file_bytes, "dry-run stdout must equal file bytes");
+    assert_eq!(
+        dry_bytes, file_bytes,
+        "dry-run stdout must equal file bytes"
+    );
 }
 
 #[test]
@@ -297,17 +300,15 @@ fn render_dry_run_ignores_output_flag() {
 
     let custom = home.path().join("custom.tex");
     render_cmd(&home)
-        .args([
-            "artigo",
-            data.to_str().unwrap(),
-            "--dry-run",
-            "--output",
-        ])
+        .args(["artigo", data.to_str().unwrap(), "--dry-run", "--output"])
         .arg(custom.to_str().unwrap())
         .assert()
         .success();
 
-    assert!(!custom.exists(), "custom output must not be created in dry-run");
+    assert!(
+        !custom.exists(),
+        "custom output must not be created in dry-run"
+    );
     assert!(!output.join("artigo.tex").exists());
 }
 

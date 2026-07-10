@@ -29,11 +29,10 @@ pub fn render_template(
         });
     }
 
-    let ctx =
-        tera::Context::from_value(json_value.clone()).map_err(|e| TexError::InvalidJson {
-            source_name: format!("template {template_name}"),
-            detail: e.to_string(),
-        })?;
+    let ctx = tera::Context::from_value(json_value.clone()).map_err(|e| TexError::InvalidJson {
+        source_name: format!("template {template_name}"),
+        detail: e.to_string(),
+    })?;
 
     tera::Tera::one_off(template_src, &ctx, false).map_err(|e| TexError::TeraRenderError {
         template_name: template_name.to_string(),
@@ -94,10 +93,7 @@ pub fn load_json_source(source: &str) -> Result<serde_json::Value, TexError> {
 pub fn resolve_output_path(cfg: &Config, template_name: &str, output: Option<&Path>) -> PathBuf {
     match output {
         Some(p) => p.to_path_buf(),
-        None => cfg
-            .paths
-            .output_dir
-            .join(format!("{template_name}.tex")),
+        None => cfg.paths.output_dir.join(format!("{template_name}.tex")),
     }
 }
 
@@ -119,10 +115,7 @@ pub fn render_and_write(
 
     let template_bytes = read_template(&cfg.paths.templates_dir, template_name)?;
     let template_src = std::str::from_utf8(&template_bytes).map_err(|e| TexError::InvalidUtf8 {
-        source_path: cfg
-            .paths
-            .templates_dir
-            .join(format!("{template_name}.tex")),
+        source_path: cfg.paths.templates_dir.join(format!("{template_name}.tex")),
         detail: e.to_string(),
     })?;
 
@@ -169,10 +162,12 @@ mod tests {
 
     #[test]
     fn render_template_missing_var_returns_tera_error() {
-        let err =
-            render_template("test", "Olá, {{ ausente }}.", &json!({})).unwrap_err();
+        let err = render_template("test", "Olá, {{ ausente }}.", &json!({})).unwrap_err();
         match err {
-            TexError::TeraRenderError { template_name, detail } => {
+            TexError::TeraRenderError {
+                template_name,
+                detail,
+            } => {
                 assert_eq!(template_name, "test");
                 assert!(detail.to_lowercase().contains("ausente") || detail.contains("Variable"));
             }
@@ -182,23 +177,14 @@ mod tests {
 
     #[test]
     fn render_template_uses_default_filter() {
-        let out = render_template(
-            "test",
-            r#"{{ x | default(value="Y") }}"#,
-            &json!({}),
-        )
-        .unwrap();
+        let out = render_template("test", r#"{{ x | default(value="Y") }}"#, &json!({})).unwrap();
         assert_eq!(out, "Y");
     }
 
     #[test]
     fn render_template_nested_access() {
-        let out = render_template(
-            "test",
-            "{{ obj.chave }}",
-            &json!({"obj":{"chave":"Z"}}),
-        )
-        .unwrap();
+        let out =
+            render_template("test", "{{ obj.chave }}", &json!({"obj":{"chave":"Z"}})).unwrap();
         assert_eq!(out, "Z");
     }
 
