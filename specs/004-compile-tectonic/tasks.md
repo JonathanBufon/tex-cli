@@ -117,7 +117,7 @@ description: "Task list for feature 004-compile-tectonic"
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T018 [P] [US2] Estender `tests/cli_compile.rs`:
+- [X] T018 [P] [US2] Estender `tests/cli_compile.rs`:
   - `compile_engine_flag_overrides_config_and_config_stays_unchanged`: config tectonic → rodar `compile <tex> --engine tectonic` (mesmo, testável sem outros engines) → sucesso. Ler config novamente e verificar `.compiler.engine == "tectonic"`. SC-005.
   - `compile_engine_not_supported_exits_42`: `--engine foo` → exit 42, stderr `Engine 'foo' não é suportado` + lista dos 5 aceitos.
   - `compile_engine_not_installed_exits_41`: `--engine tectonic` mas `PATH=/tmp/empty` → exit 41, stderr `Engine 'tectonic' não está instalado no PATH`.
@@ -125,7 +125,7 @@ description: "Task list for feature 004-compile-tectonic"
 
 ### Implementation for User Story 2
 
-- [ ] T019 [US2] `resolve_engine` + `validate_binary` já cobrem este caso via T011/T012. **Nenhuma nova implementação necessária.** Task é apenas validar via `tests/cli_compile.rs` que os 4 novos testes passam. Se algum falhar, ajustar mensagem em `EngineNotSupported`/`EngineNotInstalled` para casar com predicates.
+- [X] T019 [US2] `resolve_engine` + `validate_binary` já cobrem este caso via T011/T012. **Nenhuma nova implementação necessária.** Task é apenas validar via `tests/cli_compile.rs` que os 4 novos testes passam. Se algum falhar, ajustar mensagem em `EngineNotSupported`/`EngineNotInstalled` para casar com predicates.
 
 **Checkpoint**: `--engine` funcional; config permanece imutável (SC-005).
 

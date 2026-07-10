@@ -224,6 +224,106 @@ fn compile_force_overwrites_existing_pdf() {
 }
 
 #[test]
+fn compile_engine_flag_overrides_config_and_config_stays_unchanged() {
+    let home = TempDir::new().unwrap();
+    let output = home.path().join("out");
+    write_config(&home, &output);
+    let tex = seed_tex(&home.path().join("src"), "artigo", MINIMAL_TEX);
+
+    let cfg_before = std::fs::read_to_string(config_path(&home)).unwrap();
+
+    compile_cmd(&home)
+        .arg(tex.to_str().unwrap())
+        .args(["--engine", "tectonic"])
+        .assert()
+        .success();
+
+    let cfg_after = std::fs::read_to_string(config_path(&home)).unwrap();
+    assert_eq!(
+        cfg_before, cfg_after,
+        "config file must not change when --engine is provided"
+    );
+
+    // Also validate content parseable via JSON:
+    let json = Command::cargo_bin(BIN)
+        .unwrap()
+        .env_clear()
+        .env("HOME", home.path())
+        .env("XDG_CONFIG_HOME", home.path().join(".config"))
+        .env("PATH", std::env::var("PATH").unwrap_or_default())
+        .args(["config", "show", "--format", "json"])
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(json.stdout).unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(parsed["compiler"]["engine"], "tectonic");
+}
+
+#[test]
+fn compile_engine_not_supported_exits_42() {
+    let home = TempDir::new().unwrap();
+    let output = home.path().join("out");
+    write_config(&home, &output);
+    let tex = seed_tex(&home.path().join("src"), "artigo", MINIMAL_TEX);
+
+    compile_cmd(&home)
+        .arg(tex.to_str().unwrap())
+        .args(["--engine", "foo"])
+        .assert()
+        .failure()
+        .code(42)
+        .stderr(
+            predicate::str::contains("Engine 'foo' não é suportado")
+                .and(predicate::str::contains("tectonic"))
+                .and(predicate::str::contains("latexmk"))
+                .and(predicate::str::contains("pdflatex"))
+                .and(predicate::str::contains("xelatex"))
+                .and(predicate::str::contains("lualatex")),
+        );
+
+    assert!(
+        !output.join("artigo.pdf").exists(),
+        "no PDF should be written when engine is not supported"
+    );
+}
+
+#[test]
+fn compile_engine_not_installed_exits_41() {
+    let home = TempDir::new().unwrap();
+    let output = home.path().join("out");
+    write_config(&home, &output);
+    let tex = seed_tex(&home.path().join("src"), "artigo", MINIMAL_TEX);
+
+    let mut cmd = Command::cargo_bin(BIN).unwrap();
+    cmd.env_clear();
+    cmd.env("HOME", home.path());
+    cmd.env("XDG_CONFIG_HOME", home.path().join(".config"));
+    // Force PATH to a nonexistent dir so `which::which("tectonic")` fails.
+    cmd.env("PATH", "/tmp/empty-path-for-test");
+    cmd.arg("compile").arg(tex.to_str().unwrap());
+
+    cmd.assert().failure().code(41).stderr(
+        predicate::str::contains("Engine 'tectonic' não está instalado no PATH")
+            .and(predicate::str::contains("--engine")),
+    );
+}
+
+#[test]
+fn compile_engine_case_sensitive() {
+    let home = TempDir::new().unwrap();
+    let output = home.path().join("out");
+    write_config(&home, &output);
+    let tex = seed_tex(&home.path().join("src"), "artigo", MINIMAL_TEX);
+
+    compile_cmd(&home)
+        .arg(tex.to_str().unwrap())
+        .args(["--engine", "Tectonic"])
+        .assert()
+        .failure()
+        .code(42);
+}
+
+#[test]
 fn compile_leaves_no_artefacts_in_tmp() {
     let home = TempDir::new().unwrap();
     let output = home.path().join("out");
