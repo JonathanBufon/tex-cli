@@ -139,7 +139,7 @@ description: "Task list for feature 004-compile-tectonic"
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T020 [P] [US3] Estender `tests/cli_compile.rs`:
+- [X] T020 [P] [US3] Estender `tests/cli_compile.rs`:
   - `compile_keep_tex_copies_source_to_output_dir`: `--keep-tex` → `<output_dir>/<basename>.tex` existe com bytes iguais ao fonte.
   - `compile_keep_logs_copies_log_to_output_dir`: `--keep-logs` → `<output_dir>/<basename>.log` existe (não-vazio).
   - `compile_no_keep_tex_flags_leave_only_pdf`: `--no-keep-tex --no-keep-logs` (mesmo com config tendo keep_tex=true) → só `<basename>.pdf` no output; nenhum `.tex` ou `.log` do compile.
@@ -149,7 +149,7 @@ description: "Task list for feature 004-compile-tectonic"
 
 ### Implementation for User Story 3
 
-- [ ] T021 [US3] A lógica de resolver `keep_tex`/`keep_logs` já foi implementada em T015 e `compile_and_write` (T014) já grava os arquivos condicionalmente. Task valida via testes de T020. Se algum falhar, ajustar o handler.
+- [X] T021 [US3] A lógica de resolver `keep_tex`/`keep_logs` já foi implementada em T015 e `compile_and_write` (T014) já grava os arquivos condicionalmente. Task valida via testes de T020. Se algum falhar, ajustar o handler.
 
 **Checkpoint**: Flags de artefatos funcionam corretamente com precedência flag > config.
 

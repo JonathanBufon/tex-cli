@@ -308,6 +308,170 @@ fn compile_engine_not_installed_exits_41() {
     );
 }
 
+fn write_config_with_keep_defaults(
+    home: &TempDir,
+    output_dir: &Path,
+    keep_tex: bool,
+    keep_logs: bool,
+) {
+    let cfg = config_path(home);
+    std::fs::create_dir_all(cfg.parent().unwrap()).unwrap();
+    std::fs::create_dir_all(output_dir).unwrap();
+    let body = format!(
+        r#"[paths]
+templates_dir = "{}"
+output_dir = "{}"
+
+[compiler]
+engine = "tectonic"
+keep_tex = {}
+keep_logs = {}
+
+[behavior]
+ask_output_path_every_time = false
+"#,
+        home.path().join("t").display(),
+        output_dir.display(),
+        keep_tex,
+        keep_logs
+    );
+    std::fs::write(&cfg, body).unwrap();
+}
+
+#[test]
+fn compile_keep_tex_copies_source_to_output_dir() {
+    let home = TempDir::new().unwrap();
+    let output = home.path().join("out");
+    write_config(&home, &output);
+    let tex = seed_tex(&home.path().join("src"), "artigo", MINIMAL_TEX);
+
+    compile_cmd(&home)
+        .arg(tex.to_str().unwrap())
+        .arg("--keep-tex")
+        .assert()
+        .success();
+
+    let dest_tex = output.join("artigo.tex");
+    assert!(dest_tex.exists(), "copied .tex should exist");
+    assert_eq!(
+        std::fs::read(&dest_tex).unwrap(),
+        std::fs::read(&tex).unwrap()
+    );
+}
+
+#[test]
+fn compile_keep_logs_copies_log_to_output_dir() {
+    let home = TempDir::new().unwrap();
+    let output = home.path().join("out");
+    write_config(&home, &output);
+    let tex = seed_tex(&home.path().join("src"), "artigo", MINIMAL_TEX);
+
+    compile_cmd(&home)
+        .arg(tex.to_str().unwrap())
+        .arg("--keep-logs")
+        .assert()
+        .success();
+
+    let log = output.join("artigo.log");
+    assert!(log.exists(), "copied .log should exist");
+    let bytes = std::fs::read(&log).unwrap();
+    assert!(!bytes.is_empty(), "log should be non-empty");
+}
+
+#[test]
+fn compile_no_keep_tex_flags_leave_only_pdf() {
+    // Config has keep_tex=true and keep_logs=true, but --no-* flags win.
+    let home = TempDir::new().unwrap();
+    let output = home.path().join("out");
+    write_config_with_keep_defaults(&home, &output, true, true);
+    let tex = seed_tex(&home.path().join("src"), "artigo", MINIMAL_TEX);
+
+    compile_cmd(&home)
+        .arg(tex.to_str().unwrap())
+        .arg("--no-keep-tex")
+        .arg("--no-keep-logs")
+        .assert()
+        .success();
+
+    assert!(output.join("artigo.pdf").exists());
+    assert!(
+        !output.join("artigo.tex").exists(),
+        "--no-keep-tex should NOT copy .tex"
+    );
+    assert!(
+        !output.join("artigo.log").exists(),
+        "--no-keep-logs should NOT copy .log"
+    );
+}
+
+#[test]
+fn compile_conflicting_keep_tex_flags_exit_2() {
+    let home = TempDir::new().unwrap();
+    let output = home.path().join("out");
+    write_config(&home, &output);
+    let tex = seed_tex(&home.path().join("src"), "artigo", MINIMAL_TEX);
+
+    compile_cmd(&home)
+        .arg(tex.to_str().unwrap())
+        .arg("--keep-tex")
+        .arg("--no-keep-tex")
+        .assert()
+        .failure()
+        .code(2);
+}
+
+#[test]
+fn compile_conflicting_keep_logs_flags_exit_2() {
+    let home = TempDir::new().unwrap();
+    let output = home.path().join("out");
+    write_config(&home, &output);
+    let tex = seed_tex(&home.path().join("src"), "artigo", MINIMAL_TEX);
+
+    compile_cmd(&home)
+        .arg(tex.to_str().unwrap())
+        .arg("--keep-logs")
+        .arg("--no-keep-logs")
+        .assert()
+        .failure()
+        .code(2);
+}
+
+#[test]
+fn compile_flags_override_config_defaults() {
+    // Config keep_tex=true; --no-keep-tex wins → no .tex copy.
+    let home = TempDir::new().unwrap();
+    let output = home.path().join("out");
+    write_config_with_keep_defaults(&home, &output, true, false);
+    let tex = seed_tex(&home.path().join("src"), "artigo", MINIMAL_TEX);
+
+    compile_cmd(&home)
+        .arg(tex.to_str().unwrap())
+        .arg("--no-keep-tex")
+        .arg("--keep-logs")
+        .assert()
+        .success();
+
+    assert!(!output.join("artigo.tex").exists());
+    assert!(output.join("artigo.log").exists());
+}
+
+#[test]
+fn compile_config_keep_tex_true_copies_without_flag() {
+    // No CLI flag; config says keep_tex=true → .tex should be copied.
+    let home = TempDir::new().unwrap();
+    let output = home.path().join("out");
+    write_config_with_keep_defaults(&home, &output, true, true);
+    let tex = seed_tex(&home.path().join("src"), "artigo", MINIMAL_TEX);
+
+    compile_cmd(&home)
+        .arg(tex.to_str().unwrap())
+        .assert()
+        .success();
+
+    assert!(output.join("artigo.tex").exists(), "config keep_tex=true should copy .tex");
+    assert!(output.join("artigo.log").exists(), "config keep_logs=true should copy .log");
+}
+
 #[test]
 fn compile_engine_case_sensitive() {
     let home = TempDir::new().unwrap();
@@ -325,38 +489,32 @@ fn compile_engine_case_sensitive() {
 
 #[test]
 fn compile_leaves_no_artefacts_in_tmp() {
+    // Isolate the compile process's TMPDIR to a dedicated dir so parallel
+    // tests running their own TempDir in /tmp don't pollute this check.
     let home = TempDir::new().unwrap();
     let output = home.path().join("out");
     write_config(&home, &output);
     let tex = seed_tex(&home.path().join("src"), "artigo", MINIMAL_TEX);
 
-    let before: std::collections::HashSet<_> = std::fs::read_dir("/tmp")
+    let isolated_tmp = home.path().join("isolated-tmp");
+    std::fs::create_dir_all(&isolated_tmp).unwrap();
+
+    let mut cmd = Command::cargo_bin(BIN).unwrap();
+    cmd.env_clear();
+    cmd.env("HOME", home.path());
+    cmd.env("XDG_CONFIG_HOME", home.path().join(".config"));
+    cmd.env("PATH", std::env::var("PATH").unwrap_or_default());
+    cmd.env("TMPDIR", &isolated_tmp);
+    cmd.arg("compile").arg(tex.to_str().unwrap());
+    cmd.assert().success();
+
+    // After compile drops its TempDir, our isolated TMPDIR should be empty.
+    let residue: Vec<_> = std::fs::read_dir(&isolated_tmp)
         .unwrap()
         .filter_map(|e| e.ok().map(|e| e.file_name()))
-        .collect();
-
-    compile_cmd(&home)
-        .arg(tex.to_str().unwrap())
-        .assert()
-        .success();
-
-    let after: std::collections::HashSet<_> = std::fs::read_dir("/tmp")
-        .unwrap()
-        .filter_map(|e| e.ok().map(|e| e.file_name()))
-        .collect();
-
-    let new_entries: Vec<_> = after.difference(&before).collect();
-    // Filter out anything that isn't a `.tmp*` — TempDir uses that prefix.
-    let leaked_tempdirs: Vec<_> = new_entries
-        .iter()
-        .filter(|n| {
-            n.to_string_lossy().starts_with(".tmp")
-                || n.to_string_lossy().contains("tex-cli")
-        })
         .collect();
     assert!(
-        leaked_tempdirs.is_empty(),
-        "TempDir should be cleaned up; leaked: {:?}",
-        leaked_tempdirs
+        residue.is_empty(),
+        "TempDir Drop should clean up isolated TMPDIR; leaked: {residue:?}"
     );
 }
