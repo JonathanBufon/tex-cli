@@ -241,6 +241,91 @@ ask_output_path_every_time = false
 }
 
 #[test]
+fn banner_appears_on_render_stderr() {
+    let home = TempDir::new().unwrap();
+    write_valid_config(&home);
+    let templates_dir = home.path().join(".config").join("tex").join("templates");
+    let output_dir = home.path().join(".config").join("tex").join("output");
+    std::fs::create_dir_all(&templates_dir).unwrap();
+    std::fs::create_dir_all(&output_dir).unwrap();
+    std::fs::write(templates_dir.join("x.tex"), "{{ n }}\n").unwrap();
+    rewrite_config_pointing_both(&home, &templates_dir, &output_dir);
+
+    let data = home.path().join("d.json");
+    std::fs::write(&data, br#"{"n":"X"}"#).unwrap();
+
+    let out = base_cmd(&home)
+        .args(["render", "x"])
+        .arg(data.to_str().unwrap())
+        .output()
+        .unwrap();
+
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert_banner_in_stderr_only(&stdout, &stderr);
+}
+
+#[test]
+fn banner_never_leaks_on_render_dry_run() {
+    let home = TempDir::new().unwrap();
+    write_valid_config(&home);
+    let templates_dir = home.path().join(".config").join("tex").join("templates");
+    let output_dir = home.path().join(".config").join("tex").join("output");
+    std::fs::create_dir_all(&templates_dir).unwrap();
+    std::fs::create_dir_all(&output_dir).unwrap();
+    std::fs::write(templates_dir.join("x.tex"), "hello {{ n }}\n").unwrap();
+    rewrite_config_pointing_both(&home, &templates_dir, &output_dir);
+
+    let data = home.path().join("d.json");
+    std::fs::write(&data, br#"{"n":"World"}"#).unwrap();
+
+    let out = base_cmd(&home)
+        .args(["render", "x"])
+        .arg(data.to_str().unwrap())
+        .arg("--dry-run")
+        .output()
+        .unwrap();
+
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    for line in BANNER_ASSET.lines().filter(|l| !l.trim().is_empty()) {
+        assert!(
+            !stdout.contains(line),
+            "banner line leaked into dry-run stdout: `{line}`"
+        );
+    }
+    // But the rendered content IS on stdout:
+    assert!(stdout.contains("hello World"));
+}
+
+fn rewrite_config_pointing_both(
+    home: &TempDir,
+    templates_dir: &std::path::Path,
+    output_dir: &std::path::Path,
+) {
+    let cfg = config_path(home);
+    let body = format!(
+        r#"[paths]
+templates_dir = "{}"
+output_dir = "{}"
+
+[compiler]
+engine = "tectonic"
+keep_tex = true
+keep_logs = true
+
+[behavior]
+ask_output_path_every_time = false
+"#,
+        templates_dir.display(),
+        output_dir.display()
+    );
+    std::fs::write(&cfg, body).unwrap();
+    let mut perms = std::fs::metadata(&cfg).unwrap().permissions();
+    perms.set_mode(0o600);
+    std::fs::set_permissions(&cfg, perms).unwrap();
+}
+
+#[test]
 fn banner_content_matches_asset() {
     let home = TempDir::new().unwrap();
     write_valid_config(&home);

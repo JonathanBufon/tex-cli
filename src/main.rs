@@ -29,6 +29,7 @@ fn main() -> ExitCode {
             }
             None => tex_cli::cli::handle_templates_menu(),
         },
+        Commands::Render(args) => tex_cli::cli::handle_render(args),
     };
 
     match outcome {

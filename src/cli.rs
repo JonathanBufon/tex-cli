@@ -8,8 +8,9 @@ use std::str::FromStr;
 use crate::config::{render_humano, Config, ConfigKey};
 use crate::errors::TexError;
 use crate::interactive::{
-    confirm_create_dir, confirm_overwrite, confirm_overwrite_template, confirm_remove_template,
-    prompt_source_path, prompt_template_name, run_init_prompts, template_menu, TemplateMenuAction,
+    confirm_create_dir, confirm_dry_run, confirm_overwrite, confirm_overwrite_template,
+    confirm_remove_template, prompt_json_source, prompt_source_path, prompt_template_name,
+    run_init_prompts, template_menu, TemplateMenuAction,
 };
 use crate::paths::config_file_path;
 use crate::templates::{
@@ -48,6 +49,30 @@ pub enum Commands {
 
     /// Gerencia templates LaTeX em `paths.templates_dir`.
     Templates(TemplatesArgs),
+
+    /// Renderiza um template com dados JSON, produzindo um `.tex`.
+    Render(RenderArgs),
+}
+
+#[derive(Debug, clap::Args)]
+pub struct RenderArgs {
+    /// Nome do template (com ou sem `.tex`). Opcional para modo interativo.
+    pub template_name: Option<String>,
+
+    /// Path do arquivo JSON no host OU `-` para ler de stdin. Opcional para modo interativo.
+    pub data_source: Option<String>,
+
+    /// Caminho custom do `.tex` final. Default: `paths.output_dir/<template>.tex`.
+    #[arg(short = 'o', long)]
+    pub output: Option<std::path::PathBuf>,
+
+    /// Imprime o renderizado em stdout, não grava arquivo. Ignora `--output`.
+    #[arg(long)]
+    pub dry_run: bool,
+
+    /// Sobrescreve arquivo existente sem pedir confirmação.
+    #[arg(long)]
+    pub force: bool,
 }
 
 #[derive(Debug, clap::Args)]
@@ -337,6 +362,84 @@ pub fn handle_templates_remove(name: String, force: bool) -> Result<()> {
     let removed_path = remove_template(dir, &name, true)?;
     println!("Template '{name}' removido de {}.", removed_path.display());
     Ok(())
+}
+
+pub fn handle_render(args: RenderArgs) -> Result<()> {
+    let path = config_file_path()?;
+    let cfg = Config::load(&path)?;
+
+    let (template_name, data_source, dry_run, force, output) =
+        match (&args.template_name, &args.data_source) {
+            (Some(t), Some(d)) => (t.clone(), d.clone(), args.dry_run, args.force, args.output),
+            _ => return handle_render_menu(&cfg),
+        };
+
+    if dry_run && output.is_some() {
+        tracing::warn!("--output ignorado porque --dry-run está ativo");
+    }
+
+    let expanded_output = match output.as_deref() {
+        Some(p) => Some(crate::paths::expand_user_path(&p.display().to_string())?),
+        None => None,
+    };
+
+    render_and_print(
+        &cfg,
+        &template_name,
+        &data_source,
+        expanded_output.as_deref(),
+        force,
+        dry_run,
+    )
+}
+
+fn render_and_print(
+    cfg: &Config,
+    template_name: &str,
+    data_source: &str,
+    output: Option<&std::path::Path>,
+    force: bool,
+    dry_run: bool,
+) -> Result<()> {
+    let outcome =
+        crate::render::render_and_write(cfg, template_name, data_source, output, force, dry_run)?;
+    if outcome.dry_run {
+        return Ok(());
+    }
+    let path = outcome
+        .output_path
+        .as_ref()
+        .expect("output_path is Some when dry_run is false");
+    if outcome.overwrote_existing {
+        println!("Renderizado (sobrescrito) em {}.", path.display());
+    } else {
+        println!("Renderizado em {}.", path.display());
+    }
+    Ok(())
+}
+
+fn handle_render_menu(cfg: &Config) -> Result<()> {
+    use std::io::IsTerminal;
+
+    if !std::io::stdin().is_terminal() {
+        return Err(anyhow!(
+            "Menu interativo de render requer terminal. Use tex-cli render <template> <data.json>."
+        ));
+    }
+
+    let templates = crate::templates::list_templates(&cfg.paths.templates_dir)?;
+    if templates.is_empty() {
+        return Err(anyhow::Error::new(TexError::TemplatesDirMissing {
+            templates_dir: cfg.paths.templates_dir.clone(),
+        }));
+    }
+
+    let names: Vec<String> = templates.iter().map(|t| t.name.clone()).collect();
+    let template_name = prompt_template_name(&names)?;
+    let data_source = prompt_json_source()?;
+    let dry_run = confirm_dry_run()?;
+
+    render_and_print(cfg, &template_name, &data_source, None, false, dry_run)
 }
 
 pub fn handle_templates_menu() -> Result<()> {

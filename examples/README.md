@@ -69,6 +69,29 @@ correspondente nesta tabela. Se o novo template derivar de trabalho
 sob licença específica (LPPL, CC-BY, MIT-tex, etc.), documente a
 atribuição neste arquivo antes de commitar.
 
+## Dados de exemplo (`data/`)
+
+Cada template acima tem um JSON correspondente em `examples/data/`
+com valores realistas prontos pra alimentar o `tex-cli render`:
+
+| Data JSON                          | Alimenta o template   |
+|------------------------------------|-----------------------|
+| `data/artigo-basico.json`          | `templates/artigo-basico.tex` |
+| `data/carta.json`                  | `templates/carta.tex` |
+
+Receita rápida (assume config gerado + template adicionado):
+
+```bash
+tex-cli templates add examples/templates/artigo-basico.tex
+tex-cli render artigo-basico examples/data/artigo-basico.json
+```
+
+Ou tudo num dry-run pra ver o `.tex` renderizado antes de gravar:
+
+```bash
+tex-cli render artigo-basico examples/data/artigo-basico.json --dry-run | less
+```
+
 ## Licença
 
 `../LICENSE-EXAMPLES` contém o texto integral da LPPL 1.3c

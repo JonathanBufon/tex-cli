@@ -114,6 +114,39 @@ Contratos importantes:
 Exemplos curados de templates estão em [`examples/templates/`](examples/templates/)
 com atribuição ao autor original.
 
+### Renderizar JSON → `.tex`
+
+O subcomando `render` aplica dados JSON num template LaTeX e produz o
+`.tex` intermediário — a peça central do pipeline Data → Template →
+PDF.
+
+```bash
+tex-cli render <template> <data.json>            # grava em output_dir
+tex-cli render <template> <data.json> --output <path>
+tex-cli render <template> <data.json> --dry-run  # stdout, não grava
+tex-cli render <template> <data.json> --force    # sobrescreve
+
+echo '{"nome":"Ana"}' | tex-cli render greeting -  # JSON via stdin
+
+tex-cli render                                    # menu interativo
+```
+
+Contratos importantes:
+
+- Template usa sintaxe [`tera`](https://keats.github.io/tera/) —
+  `{{ var }}`, `{% if %}`, filtros built-in (`upper`, `lower`,
+  `default`, `join`, `length`, etc.).
+- JSON MUST ser um objeto top-level. Arrays no topo são rejeitados
+  com exit 31 e mensagem clara.
+- Autoescape=false por design — `.tex` não é HTML, escapes ficam
+  literais (`&`, `%`, `$` preservados).
+- Escrita atômica com permissão `0644`.
+- `--dry-run` produz stdout byte-a-byte idêntico ao arquivo que
+  seria gravado (SC-005).
+- `render` sem args em TTY abre menu (Select do template + Text do
+  JSON + Confirm de dry-run). Fora de TTY: exit 1 com mensagem
+  orientando o subcomando direto.
+
 ### Verbosidade
 
 Flag global `-v` repetível em qualquer subcomando:
@@ -139,9 +172,11 @@ Logs vão sempre para stderr; stdout fica limpo para pipes.
 | 13     | Valor inválido (ex.: bool malformado) |
 | 14     | Permissão negada ao gravar            |
 | 15     | Usuário abortou operação interativa   |
-| 20     | Template não existe (`show`/`remove`) |
+| 20     | Template não existe (`show`/`remove`/`render`) |
 | 21     | Arquivo do `add` não é UTF-8 válido   |
 | 22     | `paths.templates_dir` inexistente     |
+| 30     | Erro do tera durante render (var indefinida, syntax) |
+| 31     | JSON inválido (parse ou forma) no `render` |
 
 ## Desenvolvimento
 

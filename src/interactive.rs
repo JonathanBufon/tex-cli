@@ -116,6 +116,20 @@ pub fn prompt_source_path() -> Result<std::path::PathBuf, TexError> {
     Ok(std::path::PathBuf::from(raw.trim()))
 }
 
+pub fn prompt_json_source() -> Result<String, TexError> {
+    Text::new("Caminho do arquivo JSON (- para stdin):")
+        .prompt()
+        .map(|s| s.trim().to_string())
+        .map_err(map_inquire_err)
+}
+
+pub fn confirm_dry_run() -> Result<bool, TexError> {
+    Confirm::new("Modo dry-run (imprime em stdout, não grava)?")
+        .with_default(false)
+        .prompt()
+        .map_err(map_inquire_err)
+}
+
 fn map_inquire_err(err: InquireError) -> TexError {
     match err {
         InquireError::OperationCanceled | InquireError::OperationInterrupted => {

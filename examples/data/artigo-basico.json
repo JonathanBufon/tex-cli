@@ -1,0 +1,11 @@
+{
+  "titulo": "Análise de Ruído em Redes Ópticas Metropolitanas",
+  "autor": "Jonathan Bufon",
+  "email": "jonathan@example.br",
+  "data": "\\today",
+  "resumo": "Este trabalho investiga fontes de ruído em enlaces DWDM sob condições de temperatura variável, propondo um modelo empírico para estimativa de SNR em cascatas de amplificadores EDFA. Os resultados sugerem que oscilações térmicas contribuem com até 1.2 dB de degradação em enlaces típicos de 80 km, com implicações para o dimensionamento de margens de projeto.",
+  "palavras_chave": "DWDM; ruído; amplificador óptico; SNR",
+  "introducao": "Redes ópticas metropolitanas operam em regimes de sinal comprimido, e pequenas variações de ruído no amplificador impactam diretamente a capacidade útil. Este estudo revisita a modelagem clássica de ASE em EDFAs sob dependência térmica explícita.",
+  "desenvolvimento": "Foram coletados dados de 12 enlaces reais operando entre 15°C e 45°C. Aplicou-se ajuste de mínimos quadrados sobre o modelo de Giles estendido. O ajuste apresentou R² > 0.94 em 10 dos 12 enlaces.",
+  "conclusao": "O modelo proposto é adequado para operação metropolitana e recomenda-se sua adoção em ferramentas de projeto. Trabalhos futuros incluem validação em enlaces longos e integração com simuladores de sistema."
+}
