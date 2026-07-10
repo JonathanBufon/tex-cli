@@ -151,8 +151,8 @@ description: "Task list for feature 003-render-tera"
 
 ### Implementation for User Story 4
 
-- [ ] T022 [US4] Estender `src/interactive.rs`: (a) `pub fn prompt_json_source() -> Result<String, TexError>` — `inquire::Text::new("Caminho do arquivo JSON (- para stdin):").prompt()` mapeado ao `TexError::UserAborted` em cancel; (b) `pub fn confirm_dry_run() -> Result<bool, TexError>` — `inquire::Confirm::new("Modo dry-run?").with_default(false)`. Reusa `prompt_template_name` da spec 002 (já público).
-- [ ] T023 [US4] Implementar `handle_render_menu(cfg: &Config)` em `src/cli.rs`:
+- [X] T022 [US4] Estender `src/interactive.rs`: (a) `pub fn prompt_json_source() -> Result<String, TexError>` — `inquire::Text::new("Caminho do arquivo JSON (- para stdin):").prompt()` mapeado ao `TexError::UserAborted` em cancel; (b) `pub fn confirm_dry_run() -> Result<bool, TexError>` — `inquire::Confirm::new("Modo dry-run?").with_default(false)`. Reusa `prompt_template_name` da spec 002 (já público).
+- [X] T023 [US4] Implementar `handle_render_menu(cfg: &Config)` em `src/cli.rs`:
   1. `if !stdin().is_terminal()` → `anyhow!("Menu interativo de render requer terminal. Use tex-cli render <template> <data.json>.")` (exit 1).
   2. `let templates = list_templates(&cfg.paths.templates_dir)?` (herda exit 22 se dir ausente).
   3. Se `templates.is_empty()` → `anyhow!("Nenhum template encontrado em {}. Adicione um com tex-cli templates add.", cfg.paths.templates_dir.display())`. Mapear para exit 22 no path do main (`downcast` ou custom).
@@ -161,8 +161,8 @@ description: "Task list for feature 003-render-tera"
   6. `let data_source = prompt_json_source()?;`
   7. `let dry_run = confirm_dry_run()?;`
   8. Constrói `RenderArgs { template_name: Some(template_name), data_source: Some(data_source), output: None, dry_run, force: false }` e chama `handle_render(args)`.
-- [ ] T024 [US4] Atualizar `handle_render` (T014) para delegar realmente a `handle_render_menu(&cfg)` quando args positionais estão vazios (remover o placeholder anyhow do T014). Depende de T023.
-- [ ] T025 [US4] Smoke test manual do modo interativo (documentado como manual QA no PR, não automatizado — inquire requer TTY). Registrar procedimento no quickstart § 4 "Modo interativo".
+- [X] T024 [US4] Atualizar `handle_render` (T014) para delegar realmente a `handle_render_menu(&cfg)` quando args positionais estão vazios (remover o placeholder anyhow do T014). Depende de T023.
+- [X] T025 [US4] Smoke test manual do modo interativo (documentado como manual QA no PR, não automatizado — inquire requer TTY). Registrar procedimento no quickstart § 4 "Modo interativo".
 
 **Checkpoint**: Menu funcional em TTY, degrada gracefully.
 

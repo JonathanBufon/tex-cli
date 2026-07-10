@@ -8,8 +8,9 @@ use std::str::FromStr;
 use crate::config::{render_humano, Config, ConfigKey};
 use crate::errors::TexError;
 use crate::interactive::{
-    confirm_create_dir, confirm_overwrite, confirm_overwrite_template, confirm_remove_template,
-    prompt_source_path, prompt_template_name, run_init_prompts, template_menu, TemplateMenuAction,
+    confirm_create_dir, confirm_dry_run, confirm_overwrite, confirm_overwrite_template,
+    confirm_remove_template, prompt_json_source, prompt_source_path, prompt_template_name,
+    run_init_prompts, template_menu, TemplateMenuAction,
 };
 use crate::paths::config_file_path;
 use crate::templates::{
@@ -367,37 +368,44 @@ pub fn handle_render(args: RenderArgs) -> Result<()> {
     let path = config_file_path()?;
     let cfg = Config::load(&path)?;
 
-    let (template_name, data_source) = match (&args.template_name, &args.data_source) {
-        (Some(t), Some(d)) => (t.clone(), d.clone()),
-        _ => {
-            return Err(anyhow!(
-                "modo interativo será implementado na US4. Use tex-cli render <template> <data.json>."
-            ));
-        }
-    };
+    let (template_name, data_source, dry_run, force, output) =
+        match (&args.template_name, &args.data_source) {
+            (Some(t), Some(d)) => (t.clone(), d.clone(), args.dry_run, args.force, args.output),
+            _ => return handle_render_menu(&cfg),
+        };
 
-    if args.dry_run && args.output.is_some() {
+    if dry_run && output.is_some() {
         tracing::warn!("--output ignorado porque --dry-run está ativo");
     }
 
-    let expanded_output = match args.output.as_deref() {
+    let expanded_output = match output.as_deref() {
         Some(p) => Some(crate::paths::expand_user_path(&p.display().to_string())?),
         None => None,
     };
 
-    let outcome = crate::render::render_and_write(
+    render_and_print(
         &cfg,
         &template_name,
         &data_source,
         expanded_output.as_deref(),
-        args.force,
-        args.dry_run,
-    )?;
+        force,
+        dry_run,
+    )
+}
 
+fn render_and_print(
+    cfg: &Config,
+    template_name: &str,
+    data_source: &str,
+    output: Option<&std::path::Path>,
+    force: bool,
+    dry_run: bool,
+) -> Result<()> {
+    let outcome =
+        crate::render::render_and_write(cfg, template_name, data_source, output, force, dry_run)?;
     if outcome.dry_run {
         return Ok(());
     }
-
     let path = outcome
         .output_path
         .as_ref()
@@ -408,6 +416,30 @@ pub fn handle_render(args: RenderArgs) -> Result<()> {
         println!("Renderizado em {}.", path.display());
     }
     Ok(())
+}
+
+fn handle_render_menu(cfg: &Config) -> Result<()> {
+    use std::io::IsTerminal;
+
+    if !std::io::stdin().is_terminal() {
+        return Err(anyhow!(
+            "Menu interativo de render requer terminal. Use tex-cli render <template> <data.json>."
+        ));
+    }
+
+    let templates = crate::templates::list_templates(&cfg.paths.templates_dir)?;
+    if templates.is_empty() {
+        return Err(anyhow::Error::new(TexError::TemplatesDirMissing {
+            templates_dir: cfg.paths.templates_dir.clone(),
+        }));
+    }
+
+    let names: Vec<String> = templates.iter().map(|t| t.name.clone()).collect();
+    let template_name = prompt_template_name(&names)?;
+    let data_source = prompt_json_source()?;
+    let dry_run = confirm_dry_run()?;
+
+    render_and_print(cfg, &template_name, &data_source, None, false, dry_run)
 }
 
 pub fn handle_templates_menu() -> Result<()> {
