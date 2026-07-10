@@ -56,6 +56,47 @@ pub enum Commands {
 
     /// Compila um `.tex` para PDF usando o engine configurado.
     Compile(CompileArgs),
+
+    /// Pipeline JSON → PDF: renderiza template + compila em uma invocação.
+    Build(BuildArgs),
+}
+
+#[derive(Debug, clap::Args)]
+pub struct BuildArgs {
+    /// Nome do template (com ou sem `.tex`). Ausente → modo interativo.
+    pub template_name: Option<String>,
+
+    /// Path do JSON no host OU `-` para stdin. Ausente → modo interativo.
+    pub data_source: Option<String>,
+
+    /// Caminho custom do PDF final. Default: `paths.output_dir/<template>.pdf`.
+    #[arg(short = 'o', long)]
+    pub output: Option<std::path::PathBuf>,
+
+    /// Engine LaTeX (`tectonic`, `latexmk`, `pdflatex`, `xelatex`, `lualatex`).
+    /// Sobrescreve `compiler.engine` do config só nesta invocação.
+    #[arg(short = 'e', long)]
+    pub engine: Option<String>,
+
+    /// Copia o `.tex` intermediário para `output_dir` ANTES do compile.
+    #[arg(long, conflicts_with = "no_keep_tex")]
+    pub keep_tex: bool,
+
+    /// Descarta o `.tex` intermediário mesmo se config diz true.
+    #[arg(long = "no-keep-tex", conflicts_with = "keep_tex")]
+    pub no_keep_tex: bool,
+
+    /// Copia o `.log` do engine para `output_dir` após compile.
+    #[arg(long, conflicts_with = "no_keep_logs")]
+    pub keep_logs: bool,
+
+    /// Descarta o `.log` mesmo se config diz true.
+    #[arg(long = "no-keep-logs", conflicts_with = "keep_logs")]
+    pub no_keep_logs: bool,
+
+    /// Sobrescreve PDF existente sem pedir confirmação.
+    #[arg(long)]
+    pub force: bool,
 }
 
 #[derive(Debug, clap::Args)]
@@ -401,6 +442,10 @@ pub fn handle_templates_remove(name: String, force: bool) -> Result<()> {
     let removed_path = remove_template(dir, &name, true)?;
     println!("Template '{name}' removido de {}.", removed_path.display());
     Ok(())
+}
+
+pub fn handle_build(_args: BuildArgs) -> Result<()> {
+    Err(anyhow!("handle_build: não implementado"))
 }
 
 pub fn handle_compile(args: CompileArgs) -> Result<()> {
