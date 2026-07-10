@@ -65,6 +65,32 @@ pub enum TexError {
     #[error("JSON inválido em {source_name}: {detail}")]
     InvalidJson { source_name: String, detail: String },
 
+    #[error(
+        "Falha ao compilar '{}': engine '{engine}' retornou erro.\n\
+         Últimas linhas do log:\n{log_tail}\n",
+        tex_path.display()
+    )]
+    CompileFailed {
+        engine: String,
+        tex_path: PathBuf,
+        log_tail: String,
+    },
+
+    #[error(
+        "Engine '{engine}' não está instalado no PATH. \
+         Instale-o antes ou use --engine <outro>."
+    )]
+    EngineNotInstalled { engine: String },
+
+    #[error(
+        "Engine '{engine}' não é suportado. Aceitos:\n{}",
+        format_accepted(accepted)
+    )]
+    EngineNotSupported {
+        engine: String,
+        accepted: Vec<&'static str>,
+    },
+
     #[error("Erro de I/O: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -83,6 +109,9 @@ impl TexError {
             TexError::TemplatesDirMissing { .. } => 22,
             TexError::TeraRenderError { .. } => 30,
             TexError::InvalidJson { .. } => 31,
+            TexError::CompileFailed { .. } => 40,
+            TexError::EngineNotInstalled { .. } => 41,
+            TexError::EngineNotSupported { .. } => 42,
             TexError::Io(_) => 1,
             TexError::HomeDirUnavailable => 1,
             TexError::EngineBinaryMissing { .. } => 1,
@@ -176,6 +205,68 @@ mod tests {
             .exit_code(),
             31
         );
+        assert_eq!(
+            TexError::CompileFailed {
+                engine: "tectonic".into(),
+                tex_path: PathBuf::from("/tmp/x.tex"),
+                log_tail: "! Undefined control sequence.".into(),
+            }
+            .exit_code(),
+            40
+        );
+        assert_eq!(
+            TexError::EngineNotInstalled {
+                engine: "tectonic".into(),
+            }
+            .exit_code(),
+            41
+        );
+        assert_eq!(
+            TexError::EngineNotSupported {
+                engine: "foo".into(),
+                accepted: vec!["tectonic", "latexmk"],
+            }
+            .exit_code(),
+            42
+        );
+    }
+
+    #[test]
+    fn compile_failed_display_includes_engine_and_log_tail() {
+        let e = TexError::CompileFailed {
+            engine: "tectonic".into(),
+            tex_path: PathBuf::from("/tmp/artigo.tex"),
+            log_tail: "! Undefined control sequence.\nl.3 \\undefinedcommand".into(),
+        };
+        let msg = format!("{e}");
+        assert!(msg.contains("/tmp/artigo.tex"));
+        assert!(msg.contains("tectonic"));
+        assert!(msg.contains("Undefined control sequence"));
+        assert!(msg.contains("Últimas linhas do log"));
+    }
+
+    #[test]
+    fn engine_not_installed_display_orients_user() {
+        let e = TexError::EngineNotInstalled {
+            engine: "latexmk".into(),
+        };
+        let msg = format!("{e}");
+        assert!(msg.contains("latexmk"));
+        assert!(msg.contains("PATH"));
+        assert!(msg.contains("--engine"));
+    }
+
+    #[test]
+    fn engine_not_supported_display_lists_accepted() {
+        let e = TexError::EngineNotSupported {
+            engine: "foo".into(),
+            accepted: vec!["tectonic", "latexmk", "pdflatex", "xelatex", "lualatex"],
+        };
+        let msg = format!("{e}");
+        assert!(msg.contains("foo"));
+        assert!(msg.contains("tectonic"));
+        assert!(msg.contains("latexmk"));
+        assert!(msg.contains("lualatex"));
     }
 
     #[test]
