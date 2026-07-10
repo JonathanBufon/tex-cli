@@ -180,9 +180,9 @@ description: "Task list for feature 003-render-tera"
 - [X] T029 [P] Adicionar template + JSON de exemplo em `examples/`:
   - `examples/data/greeting.json` — objeto com 2-3 campos.
   - Documentar em `examples/README.md` a receita `tex-cli render greeting examples/data/greeting.json` (assume que `templates/greeting.tex` já foi adicionado). Zero mudança em `examples/LICENSE-EXAMPLES`.
-- [ ] T030 Rodar o quickstart.md do início ao fim dentro do container Docker: build → init → templates add → `render` (arquivo, dry-run, stdin, force, output custom). Documentar tempo total e outcomes no PR.
-- [ ] T031 Validar SC-001 (`render` com template ~10 KB + 10 vars < 100 ms) usando o binário release. Registrar 3-5 medições no PR ou em nota no quickstart § 7.
-- [ ] T032 Validar SC-005 (`dry-run` byte-a-byte idêntico ao arquivo gravado) por teste automatizado em `tests/cli_render.rs::render_dry_run_byte_identical_to_written_file` (T016 já cobre — task é confirmar green e mencionar SC-005 no commit message).
+- [X] T030 Rodar o quickstart.md do início ao fim dentro do container Docker: build → init → templates add → `render` (arquivo, dry-run, stdin, force, output custom). Documentar tempo total e outcomes no PR.
+- [X] T031 Validar SC-001 (`render` com template ~10 KB + 10 vars < 100 ms) usando o binário release. Registrar 3-5 medições no PR ou em nota no quickstart § 7.
+- [X] T032 Validar SC-005 (`dry-run` byte-a-byte idêntico ao arquivo gravado) por teste automatizado em `tests/cli_render.rs::render_dry_run_byte_identical_to_written_file` (T016 já cobre — task é confirmar green e mencionar SC-005 no commit message).
 
 **Checkpoint**: Feature completa, testada, documentada, examples atribuídos, performance validada.
 

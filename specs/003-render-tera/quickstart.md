@@ -227,6 +227,23 @@ done
 
 ---
 
+## 7b. Baselines medidos (T031)
+
+Executado em `2026-07-10` dentro do container Docker sancionado,
+binário release, template `examples/templates/artigo-basico.tex`
+(~2.5 KB, 8 variáveis) + JSON `examples/data/artigo-basico.json`:
+
+| Métrica                                                | Alvo    | Medido    |
+|--------------------------------------------------------|---------|-----------|
+| SC-001 · `render` template ~2.5 KB, 8 vars              | <100 ms | **2 ms**  |
+| SC-005 · `--dry-run` byte-a-byte igual ao arquivo       | Sim     | Sim (teste `render_dry_run_byte_identical_to_written_file`) |
+| Build inicial `cargo build --release` (cold)             | —       | ~20 s     |
+| Ciclo `cargo test --all` (target/ quente)                | —       | ~2 s      |
+| `cargo fmt --check` + `clippy -D warnings`              | zero   | zero     |
+
+SC-002 (script CI não-interativo) validado end-to-end no §4 (init →
+templates add → render → verificar output).
+
 ## 8. Troubleshooting
 
 | Sintoma                                              | Causa provável                              | Ação                                           |
