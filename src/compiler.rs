@@ -54,13 +54,13 @@ impl SupportedEngine {
                 "-halt-on-error".to_string(),
                 tex_filename.to_string(),
             ],
-            SupportedEngine::Pdflatex
-            | SupportedEngine::Xelatex
-            | SupportedEngine::Lualatex => vec![
-                "-interaction=nonstopmode".to_string(),
-                "-halt-on-error".to_string(),
-                tex_filename.to_string(),
-            ],
+            SupportedEngine::Pdflatex | SupportedEngine::Xelatex | SupportedEngine::Lualatex => {
+                vec![
+                    "-interaction=nonstopmode".to_string(),
+                    "-halt-on-error".to_string(),
+                    tex_filename.to_string(),
+                ]
+            }
         }
     }
 }
@@ -141,7 +141,9 @@ pub fn run_engine(
 
     if verbose >= 2 {
         cmd.stdout(Stdio::inherit()).stderr(Stdio::inherit());
-        let status = cmd.status().map_err(|e| (1, format!("failed to spawn engine: {e}")))?;
+        let status = cmd
+            .status()
+            .map_err(|e| (1, format!("failed to spawn engine: {e}")))?;
         if !status.success() || !pdf_path.exists() {
             let log_tail = read_log_tail(&log_path).unwrap_or_default();
             return Err((status.code().unwrap_or(1), log_tail));

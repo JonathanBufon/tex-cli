@@ -114,7 +114,12 @@ fn compile_pdf_has_mode_0644() {
         .unwrap()
         .permissions()
         .mode();
-    assert_eq!(mode & 0o777, 0o644, "expected 0o644, got {:o}", mode & 0o777);
+    assert_eq!(
+        mode & 0o777,
+        0o644,
+        "expected 0o644, got {:o}",
+        mode & 0o777
+    );
 }
 
 #[test]
@@ -173,8 +178,7 @@ fn compile_broken_tex_exits_40_with_log_tail() {
         .failure()
         .code(40)
         .stderr(
-            predicate::str::contains("Falha ao compilar")
-                .and(predicate::str::contains("broken")),
+            predicate::str::contains("Falha ao compilar").and(predicate::str::contains("broken")),
         );
 
     assert!(
@@ -220,7 +224,10 @@ fn compile_force_overwrites_existing_pdf() {
         .stdout(predicate::str::contains("sobrescrito"));
 
     let bytes = std::fs::read(&pdf).unwrap();
-    assert!(bytes.starts_with(b"%PDF-"), "should be a real PDF after --force");
+    assert!(
+        bytes.starts_with(b"%PDF-"),
+        "should be a real PDF after --force"
+    );
 }
 
 #[test]
@@ -468,8 +475,14 @@ fn compile_config_keep_tex_true_copies_without_flag() {
         .assert()
         .success();
 
-    assert!(output.join("artigo.tex").exists(), "config keep_tex=true should copy .tex");
-    assert!(output.join("artigo.log").exists(), "config keep_logs=true should copy .log");
+    assert!(
+        output.join("artigo.tex").exists(),
+        "config keep_tex=true should copy .tex"
+    );
+    assert!(
+        output.join("artigo.log").exists(),
+        "config keep_logs=true should copy .log"
+    );
 }
 
 #[test]

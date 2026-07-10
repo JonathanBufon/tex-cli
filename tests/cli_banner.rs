@@ -217,6 +217,34 @@ fn banner_appears_on_templates_remove_stderr() {
     assert_banner_in_stderr_only(&stdout, &stderr);
 }
 
+#[test]
+fn banner_appears_on_compile_stderr() {
+    let home = TempDir::new().unwrap();
+    write_valid_config(&home);
+    let templates_dir = home.path().join(".config").join("tex").join("templates");
+    let output_dir = home.path().join(".config").join("tex").join("output");
+    std::fs::create_dir_all(&templates_dir).unwrap();
+    std::fs::create_dir_all(&output_dir).unwrap();
+    rewrite_config_pointing_both(&home, &templates_dir, &output_dir);
+
+    let tex_src = home.path().join("hello.tex");
+    std::fs::write(
+        &tex_src,
+        "\\documentclass{article}\n\\begin{document}Hello.\n\\end{document}\n",
+    )
+    .unwrap();
+
+    let out = base_cmd(&home)
+        .arg("compile")
+        .arg(tex_src.to_str().unwrap())
+        .output()
+        .unwrap();
+
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert_banner_in_stderr_only(&stdout, &stderr);
+}
+
 fn rewrite_config_pointing_at(home: &TempDir, templates_dir: &std::path::Path) {
     let cfg = config_path(home);
     let body = format!(
