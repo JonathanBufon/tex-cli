@@ -163,16 +163,16 @@ description: "Task list for feature 004-compile-tectonic"
 
 ### Implementation for User Story 4
 
-- [ ] T022 [US4] Estender `src/interactive.rs`: `pub fn prompt_tex_source() -> Result<PathBuf, TexError>` — `inquire::Text::new("Caminho do .tex a compilar:").prompt()` mapeado ao TexError::UserAborted em cancel. Reusa mesmo pattern do `prompt_json_source` da spec 003.
-- [ ] T023 [US4] Estender `src/interactive.rs`: `pub fn confirm_keep_tex(default: bool) -> Result<bool, TexError>` — `inquire::Confirm::new("Manter cópia do .tex no output_dir?").with_default(default)`. Idem `pub fn confirm_keep_logs(default: bool)`. Recebem default do config pra prompt useful.
-- [ ] T024 [US4] Implementar `handle_compile_menu(cfg: &Config)` em `src/cli.rs`:
+- [X] T022 [US4] Estender `src/interactive.rs`: `pub fn prompt_tex_source() -> Result<PathBuf, TexError>` — `inquire::Text::new("Caminho do .tex a compilar:").prompt()` mapeado ao TexError::UserAborted em cancel. Reusa mesmo pattern do `prompt_json_source` da spec 003.
+- [X] T023 [US4] Estender `src/interactive.rs`: `pub fn confirm_keep_tex(default: bool) -> Result<bool, TexError>` — `inquire::Confirm::new("Manter cópia do .tex no output_dir?").with_default(default)`. Idem `pub fn confirm_keep_logs(default: bool)`. Recebem default do config pra prompt useful.
+- [X] T024 [US4] Implementar `handle_compile_menu(cfg: &Config)` em `src/cli.rs`:
   1. `if !stdin().is_terminal()` → `anyhow!("Menu interativo de compile requer terminal. Use tex-cli compile <tex-file>.")` (exit 1).
   2. `let tex_path = prompt_tex_source()?;`
   3. `let keep_tex = confirm_keep_tex(cfg.compiler.keep_tex)?;`
   4. `let keep_logs = confirm_keep_logs(cfg.compiler.keep_logs)?;`
   5. Constrói `CompileArgs { tex_file: Some(tex_path), output: None, engine: None, keep_tex, no_keep_tex: !keep_tex, keep_logs, no_keep_logs: !keep_logs, force: false }` e chama `handle_compile(args)`.
-- [ ] T025 [US4] Atualizar `handle_compile` (T015) para delegar realmente a `handle_compile_menu(&cfg)` quando `args.tex_file.is_none()` (remover o placeholder do T015).
-- [ ] T026 [US4] Smoke test manual do modo interativo (documentado no quickstart § 4 "Modo interativo", não automatizado).
+- [X] T025 [US4] Atualizar `handle_compile` (T015) para delegar realmente a `handle_compile_menu(&cfg)` quando `args.tex_file.is_none()` (remover o placeholder do T015).
+- [X] T026 [US4] Smoke test manual do modo interativo (documentado no quickstart § 4 "Modo interativo", não automatizado).
 
 **Checkpoint**: Menu funcional em TTY, degrada gracefully.
 

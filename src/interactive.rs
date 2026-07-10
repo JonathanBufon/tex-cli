@@ -72,6 +72,27 @@ pub fn confirm_compile_overwrite(path: &Path) -> Result<bool, TexError> {
         .map_err(map_inquire_err)
 }
 
+pub fn prompt_tex_source() -> Result<std::path::PathBuf, TexError> {
+    let raw = Text::new("Caminho do .tex a compilar:")
+        .prompt()
+        .map_err(map_inquire_err)?;
+    Ok(std::path::PathBuf::from(raw.trim()))
+}
+
+pub fn confirm_keep_tex(default: bool) -> Result<bool, TexError> {
+    Confirm::new("Manter cópia do .tex no output_dir?")
+        .with_default(default)
+        .prompt()
+        .map_err(map_inquire_err)
+}
+
+pub fn confirm_keep_logs(default: bool) -> Result<bool, TexError> {
+    Confirm::new("Manter cópia do .log no output_dir?")
+        .with_default(default)
+        .prompt()
+        .map_err(map_inquire_err)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TemplateMenuAction {
     List,

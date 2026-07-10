@@ -8,9 +8,10 @@ use std::str::FromStr;
 use crate::config::{render_humano, Config, ConfigKey};
 use crate::errors::TexError;
 use crate::interactive::{
-    confirm_compile_overwrite, confirm_create_dir, confirm_dry_run, confirm_overwrite,
-    confirm_overwrite_template, confirm_remove_template, prompt_json_source, prompt_source_path,
-    prompt_template_name, run_init_prompts, template_menu, TemplateMenuAction,
+    confirm_compile_overwrite, confirm_create_dir, confirm_dry_run, confirm_keep_logs,
+    confirm_keep_tex, confirm_overwrite, confirm_overwrite_template, confirm_remove_template,
+    prompt_json_source, prompt_source_path, prompt_template_name, prompt_tex_source,
+    run_init_prompts, template_menu, TemplateMenuAction,
 };
 use crate::paths::config_file_path;
 use crate::templates::{
@@ -410,11 +411,7 @@ pub fn handle_compile(args: CompileArgs) -> Result<()> {
 
     let tex_file = match args.tex_file.as_ref() {
         Some(p) => p.clone(),
-        None => {
-            return Err(anyhow!(
-                "modo interativo será implementado na US4. Use tex-cli compile <tex-file>."
-            ));
-        }
+        None => return handle_compile_menu(&cfg),
     };
 
     let tex_path = crate::paths::expand_user_path(&tex_file.display().to_string())?;
@@ -474,6 +471,11 @@ pub fn handle_compile(args: CompileArgs) -> Result<()> {
         0,
     )?;
 
+    print_compile_outcome(&outcome);
+    Ok(())
+}
+
+fn print_compile_outcome(outcome: &crate::compiler::CompileOutcome) {
     let secs = outcome.duration.as_secs_f32();
     if outcome.overwrote_existing {
         println!(
@@ -488,6 +490,47 @@ pub fn handle_compile(args: CompileArgs) -> Result<()> {
             secs
         );
     }
+}
+
+fn handle_compile_menu(cfg: &Config) -> Result<()> {
+    use std::io::IsTerminal;
+
+    if !std::io::stdin().is_terminal() {
+        return Err(anyhow!(
+            "Menu interativo de compile requer terminal. Use tex-cli compile <tex-file>."
+        ));
+    }
+
+    let tex_path = prompt_tex_source()?;
+    let keep_tex = confirm_keep_tex(cfg.compiler.keep_tex)?;
+    let keep_logs = confirm_keep_logs(cfg.compiler.keep_logs)?;
+
+    let tex_path = crate::paths::expand_user_path(&tex_path.display().to_string())?;
+
+    let engine = crate::compiler::resolve_engine(None, &cfg.compiler.engine)?;
+
+    let basename = tex_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .ok_or_else(|| anyhow!("caminho do .tex fonte inválido"))?;
+    let output_pdf = cfg.paths.output_dir.join(format!("{basename}.pdf"));
+
+    if output_pdf.exists() && !confirm_compile_overwrite(&output_pdf)? {
+        return Err(anyhow::Error::new(TexError::UserAborted));
+    }
+
+    let outcome = crate::compiler::compile_and_write(
+        cfg,
+        &tex_path,
+        engine,
+        &output_pdf,
+        keep_tex,
+        keep_logs,
+        false,
+        0,
+    )?;
+
+    print_compile_outcome(&outcome);
     Ok(())
 }
 
