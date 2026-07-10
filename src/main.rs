@@ -31,6 +31,7 @@ fn main() -> ExitCode {
         },
         Commands::Render(args) => tex_cli::cli::handle_render(args),
         Commands::Compile(args) => tex_cli::cli::handle_compile(args),
+        Commands::Build(args) => tex_cli::cli::handle_build(args),
     };
 
     match outcome {
