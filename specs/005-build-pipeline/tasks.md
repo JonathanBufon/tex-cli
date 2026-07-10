@@ -55,7 +55,7 @@ description: "Task list for feature 005-build-pipeline"
 
 ### Tests for User Story 1 (write first, ensure they FAIL before implementation) ⚠️
 
-- [ ] T004 [P] [US1] Criar `tests/cli_build.rs` com testes de integração usando `assert_cmd` + `assert_fs`:
+- [X] T004 [P] [US1] Criar `tests/cli_build.rs` com testes de integração usando `assert_cmd` + `assert_fs`:
   - `build_produces_pdf_with_default_output_path`: fixture `.tex` mínimo válido + JSON com dados → PDF em `<output_dir>/<template>.pdf`.
   - `build_pdf_has_pdf_magic_bytes`: `std::fs::read(&pdf)[0..4] == b"%PDF"`.
   - `build_pdf_has_mode_0644`: mode & 0o777 == 0o644.
