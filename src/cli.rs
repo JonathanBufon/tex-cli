@@ -8,9 +8,9 @@ use std::str::FromStr;
 use crate::config::{render_humano, Config, ConfigKey};
 use crate::errors::TexError;
 use crate::interactive::{
-    confirm_create_dir, confirm_dry_run, confirm_overwrite, confirm_overwrite_template,
-    confirm_remove_template, prompt_json_source, prompt_source_path, prompt_template_name,
-    run_init_prompts, template_menu, TemplateMenuAction,
+    confirm_compile_overwrite, confirm_create_dir, confirm_dry_run, confirm_overwrite,
+    confirm_overwrite_template, confirm_remove_template, prompt_json_source, prompt_source_path,
+    prompt_template_name, run_init_prompts, template_menu, TemplateMenuAction,
 };
 use crate::paths::config_file_path;
 use crate::templates::{
@@ -402,8 +402,93 @@ pub fn handle_templates_remove(name: String, force: bool) -> Result<()> {
     Ok(())
 }
 
-pub fn handle_compile(_args: CompileArgs) -> Result<()> {
-    Err(anyhow!("handle_compile: não implementado"))
+pub fn handle_compile(args: CompileArgs) -> Result<()> {
+    use std::io::IsTerminal;
+
+    let cfg_path = config_file_path()?;
+    let cfg = Config::load(&cfg_path)?;
+
+    let tex_file = match args.tex_file.as_ref() {
+        Some(p) => p.clone(),
+        None => {
+            return Err(anyhow!(
+                "modo interativo será implementado na US4. Use tex-cli compile <tex-file>."
+            ));
+        }
+    };
+
+    let tex_path = crate::paths::expand_user_path(&tex_file.display().to_string())?;
+
+    let engine = crate::compiler::resolve_engine(args.engine.as_deref(), &cfg.compiler.engine)?;
+
+    let output_pdf = match args.output.as_ref() {
+        Some(p) => crate::paths::expand_user_path(&p.display().to_string())?,
+        None => {
+            let basename = tex_path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .ok_or_else(|| anyhow!("caminho do .tex fonte inválido"))?;
+            cfg.paths.output_dir.join(format!("{basename}.pdf"))
+        }
+    };
+
+    let keep_tex = if args.keep_tex {
+        true
+    } else if args.no_keep_tex {
+        false
+    } else {
+        cfg.compiler.keep_tex
+    };
+
+    let keep_logs = if args.keep_logs {
+        true
+    } else if args.no_keep_logs {
+        false
+    } else {
+        cfg.compiler.keep_logs
+    };
+
+    if output_pdf.exists() && !args.force {
+        let confirmed = if std::io::stdin().is_terminal() {
+            confirm_compile_overwrite(&output_pdf)?
+        } else {
+            eprintln!(
+                "Arquivo {} já existe. Use --force ou execute em terminal interativo.",
+                output_pdf.display()
+            );
+            false
+        };
+        if !confirmed {
+            return Err(anyhow::Error::new(TexError::UserAborted));
+        }
+    }
+
+    let outcome = crate::compiler::compile_and_write(
+        &cfg,
+        &tex_path,
+        engine,
+        &output_pdf,
+        keep_tex,
+        keep_logs,
+        args.force,
+        0,
+    )?;
+
+    let secs = outcome.duration.as_secs_f32();
+    if outcome.overwrote_existing {
+        println!(
+            "PDF gerado (sobrescrito) em {}. Compilação levou {:.1}s.",
+            outcome.pdf_path.display(),
+            secs
+        );
+    } else {
+        println!(
+            "PDF gerado em {}. Compilação levou {:.1}s.",
+            outcome.pdf_path.display(),
+            secs
+        );
+    }
+    Ok(())
 }
 
 pub fn handle_render(args: RenderArgs) -> Result<()> {

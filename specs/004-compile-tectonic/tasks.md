@@ -67,7 +67,7 @@ description: "Task list for feature 004-compile-tectonic"
   - `compile_overwrite_without_force_non_tty_exits_15`: PDF já existe, sem `--force`, sem TTY → exit 15, PDF original intacto (comparar bytes).
   - `compile_force_overwrites_existing_pdf`: `--force` → sobrescreve, stdout menciona "sobrescrito".
   - `compile_leaves_no_artefacts_in_tmp`: snapshot de `/tmp` antes/depois, filtra arquivos com prefixo `.tmp*` gerados por `TempDir` — nenhum deve permanecer.
-- [ ] T006 [P] [US1] Unit tests inline em `src/compiler.rs` (`#[cfg(test)] mod tests`) cobrindo:
+- [X] T006 [P] [US1] Unit tests inline em `src/compiler.rs` (`#[cfg(test)] mod tests`) cobrindo:
   - `supported_engine_from_str_accepts_canonical`: parse case-sensitive de todas as 5 variantes.
   - `supported_engine_from_str_rejects_unknown`: "foo" → `EngineNotSupported`, `"Tectonic"` (case wrong) → rejeitado.
   - `supported_engine_as_str_matches_binary_name`: `Tectonic.as_str() == Tectonic.binary_name() == "tectonic"` etc.
@@ -81,15 +81,15 @@ description: "Task list for feature 004-compile-tectonic"
 
 ### Implementation for User Story 1
 
-- [ ] T007 [P] [US1] Implementar `pub enum SupportedEngine` + `impl` (ALL, as_str, binary_name, args_for) em `src/compiler.rs` conforme data-model.md.
-- [ ] T008 [P] [US1] Implementar `impl FromStr for SupportedEngine` com match exato + `TexError::EngineNotSupported { engine, accepted: SupportedEngine::ALL.iter().map(|e| e.as_str()).collect() }` em falha. Adicionar `impl Display` delegando a `as_str()`.
-- [ ] T009 [P] [US1] Implementar `pub fn tail_lines(s: &str, n: usize) -> String` em `src/compiler.rs`: split por `\n`, `.rev().take(n).rev()`, `join("\n")`. Handles empty string. Cobrir por unit tests T006.
+- [X] T007 [P] [US1] Implementar `pub enum SupportedEngine` + `impl` (ALL, as_str, binary_name, args_for) em `src/compiler.rs` conforme data-model.md.
+- [X] T008 [P] [US1] Implementar `impl FromStr for SupportedEngine` com match exato + `TexError::EngineNotSupported { engine, accepted: SupportedEngine::ALL.iter().map(|e| e.as_str()).collect() }` em falha. Adicionar `impl Display` delegando a `as_str()`.
+- [X] T009 [P] [US1] Implementar `pub fn tail_lines(s: &str, n: usize) -> String` em `src/compiler.rs`: split por `\n`, `.rev().take(n).rev()`, `join("\n")`. Handles empty string. Cobrir por unit tests T006.
 - [ ] T010 [US1] Implementar `pub struct CompileOutcome { pdf_path: PathBuf, duration: Duration, bytes_written: u64, overwrote_existing: bool, kept_tex: bool, kept_logs: bool }` em `src/compiler.rs` conforme data-model.md.
-- [ ] T011 [US1] Implementar `pub fn resolve_engine(cli_flag: Option<&str>, config_engine: &str) -> Result<SupportedEngine, TexError>` em `src/compiler.rs`: se `cli_flag.is_some()` parseia via `FromStr`; senão parseia `config_engine`. Ambas as falhas retornam `EngineNotSupported`. Depende de T008.
-- [ ] T012 [US1] Implementar `pub fn validate_binary(engine: SupportedEngine) -> Result<PathBuf, TexError>` em `src/compiler.rs`: `which::which(engine.binary_name()).map_err(|_| TexError::EngineNotInstalled { engine: engine.to_string() })`. Retorna path do binário.
-- [ ] T013 [US1] Implementar `pub fn run_engine(engine: SupportedEngine, cwd: &Path, tex_filename: &str, verbose: u8) -> Result<(), (i32, String)>` em `src/compiler.rs`: (1) constrói `Command::new(engine.binary_name()).current_dir(cwd).args(engine.args_for(tex_filename))`; (2) se `verbose >= 2`: `Stdio::inherit()` pra stdout/stderr; senão captura via `.output()`; (3) verifica `status.success()`; (4) verifica `<cwd>/<basename>.pdf` existe (D-10); (5) em erro, lê `<cwd>/<basename>.log` (últimas 30 linhas via `tail_lines`) ou fallback pro stderr; retorna `Err((exit_code, log_tail))`. Handler mapeia isso pra `CompileFailed`. Depende de T007, T009, T012.
-- [ ] T014 [US1] Implementar `pub fn compile_and_write(cfg: &Config, tex_path: &Path, engine: SupportedEngine, output_pdf: &Path, keep_tex: bool, keep_logs: bool, force: bool, verbose: u8) -> Result<CompileOutcome, TexError>` em `src/compiler.rs` conforme data-model.md fluxo. Usa `atomic::write_atomic(&output_pdf, &pdf_bytes, 0o644)` para gravar o PDF, e para copiar `.tex`/`.log` quando keep flags = true. `TempDir::new()?` no início; cai fora de scope no final. Depende de T007..T013.
-- [ ] T015 [US1] Implementar `handle_compile(args: CompileArgs)` em `src/cli.rs`:
+- [X] T011 [US1] Implementar `pub fn resolve_engine(cli_flag: Option<&str>, config_engine: &str) -> Result<SupportedEngine, TexError>` em `src/compiler.rs`: se `cli_flag.is_some()` parseia via `FromStr`; senão parseia `config_engine`. Ambas as falhas retornam `EngineNotSupported`. Depende de T008.
+- [X] T012 [US1] Implementar `pub fn validate_binary(engine: SupportedEngine) -> Result<PathBuf, TexError>` em `src/compiler.rs`: `which::which(engine.binary_name()).map_err(|_| TexError::EngineNotInstalled { engine: engine.to_string() })`. Retorna path do binário.
+- [X] T013 [US1] Implementar `pub fn run_engine(engine: SupportedEngine, cwd: &Path, tex_filename: &str, verbose: u8) -> Result<(), (i32, String)>` em `src/compiler.rs`: (1) constrói `Command::new(engine.binary_name()).current_dir(cwd).args(engine.args_for(tex_filename))`; (2) se `verbose >= 2`: `Stdio::inherit()` pra stdout/stderr; senão captura via `.output()`; (3) verifica `status.success()`; (4) verifica `<cwd>/<basename>.pdf` existe (D-10); (5) em erro, lê `<cwd>/<basename>.log` (últimas 30 linhas via `tail_lines`) ou fallback pro stderr; retorna `Err((exit_code, log_tail))`. Handler mapeia isso pra `CompileFailed`. Depende de T007, T009, T012.
+- [X] T014 [US1] Implementar `pub fn compile_and_write(cfg: &Config, tex_path: &Path, engine: SupportedEngine, output_pdf: &Path, keep_tex: bool, keep_logs: bool, force: bool, verbose: u8) -> Result<CompileOutcome, TexError>` em `src/compiler.rs` conforme data-model.md fluxo. Usa `atomic::write_atomic(&output_pdf, &pdf_bytes, 0o644)` para gravar o PDF, e para copiar `.tex`/`.log` quando keep flags = true. `TempDir::new()?` no início; cai fora de scope no final. Depende de T007..T013.
+- [X] T015 [US1] Implementar `handle_compile(args: CompileArgs)` em `src/cli.rs`:
   1. Load config (exit 10/11).
   2. Se `args.tex_file.is_none()` → delega para `handle_compile_menu(&cfg)` (implementado em Phase 6 US4; por enquanto retorna `anyhow!("modo interativo será implementado na US4")`).
   3. Expandir `args.tex_file` via `paths::expand_user_path` se relativo; verificar existência → exit 1 se não.
@@ -102,8 +102,8 @@ description: "Task list for feature 004-compile-tectonic"
      - `overwrote_existing = true` → `PDF gerado (sobrescrito) em {path}. Compilação levou {sec:.1}s.`
      - senão → `PDF gerado em {path}. Compilação levou {sec:.1}s.`
   10. Depende de T014.
-- [ ] T016 [US1] Estender `src/interactive.rs`: `pub fn confirm_compile_overwrite(path: &Path) -> Result<bool, TexError>` usando `inquire::Confirm::new("Sobrescrever <path>?").with_default(false).prompt().map_err(map_inquire_err)`.
-- [ ] T017 [US1] Rodar `tests/cli_compile.rs` no container. Todos os 10 testes de US1 devem passar. Ajustar mensagens até casarem com predicates. Rodar `cargo test --lib compiler` para confirmar unit tests inline verdes.
+- [X] T016 [US1] Estender `src/interactive.rs`: `pub fn confirm_compile_overwrite(path: &Path) -> Result<bool, TexError>` usando `inquire::Confirm::new("Sobrescrever <path>?").with_default(false).prompt().map_err(map_inquire_err)`.
+- [X] T017 [US1] Rodar `tests/cli_compile.rs` no container. Todos os 10 testes de US1 devem passar. Ajustar mensagens até casarem com predicates. Rodar `cargo test --lib compiler` para confirmar unit tests inline verdes.
 
 **Checkpoint**: MVP funcional. `tex-cli compile <tex>` produz PDF válido no output_dir. Container: `cargo test --test cli_compile` verde.
 

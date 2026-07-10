@@ -65,6 +65,13 @@ pub fn confirm_remove_template(name: &str) -> Result<bool, TexError> {
         .map_err(map_inquire_err)
 }
 
+pub fn confirm_compile_overwrite(path: &Path) -> Result<bool, TexError> {
+    Confirm::new(&format!("Sobrescrever {}?", path.display()))
+        .with_default(false)
+        .prompt()
+        .map_err(map_inquire_err)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TemplateMenuAction {
     List,
