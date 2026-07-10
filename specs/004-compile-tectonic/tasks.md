@@ -184,7 +184,7 @@ description: "Task list for feature 004-compile-tectonic"
 
 - [X] T027 [P] Estender `tests/cli_banner.rs` (existente): `banner_appears_on_compile_stderr` — invoca `compile` com `.tex` válido, valida marker em stderr.
 - [X] T028 [P] Rodar `cargo fmt --all -- --check` e `cargo clippy --all-targets --all-features -- -D warnings` no container. Corrigir violações.
-- [ ] T029 [P] Estender `README.md` da raiz: seção "Compilar `.tex` → PDF" com exemplos dos fluxos principais (default, --output, --engine override, --keep-*, --force, menu interativo). Atualizar tabela de exit codes com 40/41/42. Atualizar roadmap indicando spec 005 (build end-to-end) como próxima.
+- [X] T029 [P] Estender `README.md` da raiz: seção "Compilar `.tex` → PDF" com exemplos dos fluxos principais (default, --output, --engine override, --keep-*, --force, menu interativo). Atualizar tabela de exit codes com 40/41/42. Atualizar roadmap indicando spec 005 (build end-to-end) como próxima.
 - [ ] T030 Rodar o quickstart.md do início ao fim dentro do container Docker: build → init → templates add → render → compile → verificar PDF válido. Documentar tempo total e outcomes no PR.
 - [ ] T031 Validar SC-001 (`compile` template simples via tectonic < 15 s wall-clock) usando o binário release. Registrar 3-5 medições no PR ou em nota no quickstart § 7.
 - [ ] T032 Validar SC-005 (config imutável após --engine) por teste automatizado em `tests/cli_compile.rs::compile_engine_flag_overrides_config_and_config_stays_unchanged` (T018 já cobre — task é confirmar green e mencionar SC-005 no commit).

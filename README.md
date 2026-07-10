@@ -155,6 +155,38 @@ Contratos importantes:
   JSON + Confirm de dry-run). Fora de TTY: exit 1 com mensagem
   orientando o subcomando direto.
 
+### Compilar `.tex` → PDF
+
+O subcomando `compile` transforma um `.tex` em PDF usando o engine
+configurado. Fecha o pipeline JSON → PDF junto com `render`.
+
+```bash
+tex-cli compile <tex-file>                            # grava em output_dir
+tex-cli compile <tex-file> --output <path>           # path custom
+tex-cli compile <tex-file> --engine latexmk          # sobrescreve engine só nesta invocação
+tex-cli compile <tex-file> --keep-tex --keep-logs    # copia .tex e .log pro output_dir
+tex-cli compile <tex-file> --no-keep-tex             # inverte default do config
+tex-cli compile <tex-file> --force                   # sobrescreve PDF existente
+
+tex-cli compile                                       # menu interativo
+```
+
+Contratos importantes:
+
+- Engine default vem de `compiler.engine` do config (`tectonic` é o
+  padrão). `--engine <name>` sobrescreve **só nesta invocação** — o
+  config file permanece imutável.
+- Engines aceitos: `tectonic`, `latexmk`, `pdflatex`, `xelatex`,
+  `lualatex`. Fora dessa lista → exit 42.
+- Engine não instalado no PATH → exit 41 com mensagem clara.
+- Erro de compilação → exit 40, stderr contém as **últimas ~30 linhas**
+  do `.log` do engine para diagnóstico direto.
+- PDF gravado atomicamente com permissão `0644`.
+- Compilação roda em `TempDir` isolado; nenhum artefato residual no
+  filesystem após o comando (garantido por RAII do tempfile).
+- `stdout` reporta path do PDF + tempo de compilação:
+  `PDF gerado em <path>. Compilação levou X.Ys.`
+
 ### Verbosidade
 
 Flag global `-v` repetível em qualquer subcomando:
@@ -185,6 +217,9 @@ Logs vão sempre para stderr; stdout fica limpo para pipes.
 | 22     | `paths.templates_dir` inexistente     |
 | 30     | Erro do tera durante render (var indefinida, syntax) |
 | 31     | JSON inválido (parse ou forma) no `render` |
+| 40     | Falha do engine LaTeX durante `compile` (log tail em stderr) |
+| 41     | Engine LaTeX não está instalado no PATH                       |
+| 42     | Engine não suportado (fora de tectonic/latexmk/pdflatex/xelatex/lualatex) |
 
 ## Desenvolvimento
 
