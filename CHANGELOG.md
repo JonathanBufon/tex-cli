@@ -24,6 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   version-bump rules, deprecation policy, pre-1.0 behavior, MSRV
   stance, and release process.
 
+### Fixed
+
+- Removed dead `TexError::EngineBinaryMissing` variant. It duplicated
+  `EngineNotInstalled` semantically but had no call sites and would
+  have produced exit code `1` (generic) instead of `41` (engine not
+  on PATH). Discovered during the pre-1.0 API audit.
+
 ### Changed
 
 - Renamed `LICENSE` to `LICENSE-MIT` and added `LICENSE-APACHE`.
