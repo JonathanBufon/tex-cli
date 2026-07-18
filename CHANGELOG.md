@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `ROADMAP.md` — tracks blockers, recommended items, and explicitly
   deferred scope on the road to `v1.0.0`.
+- `SEMVER.md` — versioning policy defining the public surface,
+  version-bump rules, deprecation policy, pre-1.0 behavior, MSRV
+  stance, and release process.
 
 ### Changed
 
