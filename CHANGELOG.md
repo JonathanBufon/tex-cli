@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ecosystem convention. Apache-2.0 adds an explicit patent grant that
   MIT alone did not provide.
 
+- `ROADMAP.md` — tracks blockers, recommended items, and explicitly
+  deferred scope on the road to `v1.0.0`.
+
 ### Changed
 
 - Renamed `LICENSE` to `LICENSE-MIT` and added `LICENSE-APACHE`.
