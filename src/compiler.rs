@@ -164,7 +164,7 @@ pub fn run_engine(
                 }
             });
             let log_tail = if log_tail.trim().is_empty() {
-                "Engine retornou sucesso mas nenhum PDF foi produzido.".to_string()
+                "Engine returned success but no PDF was produced.".to_string()
             } else {
                 log_tail
             };
@@ -198,7 +198,7 @@ pub fn compile_and_write(
     if !tex_path.exists() {
         return Err(TexError::Io(std::io::Error::new(
             std::io::ErrorKind::NotFound,
-            format!("arquivo {} não encontrado", tex_path.display()),
+            format!("file {} not found", tex_path.display()),
         )));
     }
 

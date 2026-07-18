@@ -80,7 +80,7 @@ pub fn load_json_source(source: &str) -> Result<serde_json::Value, TexError> {
     if content.trim().is_empty() {
         return Err(TexError::InvalidJson {
             source_name: source_display,
-            detail: "sem conteúdo".to_string(),
+            detail: "empty content".to_string(),
         });
     }
 

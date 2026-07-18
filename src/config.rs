@@ -191,7 +191,7 @@ impl Config {
                 let mut warnings = Vec::new();
                 if !expanded.exists() {
                     warnings.push(format!(
-                        "Aviso: '{}' não existe no momento.",
+                        "Warning: '{}' does not exist yet.",
                         expanded.display()
                     ));
                 }
@@ -207,7 +207,7 @@ impl Config {
                 let mut warnings = Vec::new();
                 if !expanded.exists() {
                     warnings.push(format!(
-                        "Aviso: '{}' não existe no momento.",
+                        "Warning: '{}' does not exist yet.",
                         expanded.display()
                     ));
                 }
@@ -228,11 +228,11 @@ impl Config {
                 let mut warnings = Vec::new();
                 if raw_value != "tectonic" {
                     warnings.push(format!(
-                        "Aviso: engine '{raw_value}' ainda não é executada pelo Tex nesta versão. A preferência foi salva."
+                        "Warning: engine '{raw_value}' is not yet executed by Tex in this version. Preference saved."
                     ));
                 }
                 if which::which(raw_value).is_err() {
-                    warnings.push(format!("Aviso: '{raw_value}' não está no PATH."));
+                    warnings.push(format!("Warning: '{raw_value}' is not on PATH."));
                 }
                 self.compiler.engine = raw_value.to_string();
                 Ok(AppliedChange {
