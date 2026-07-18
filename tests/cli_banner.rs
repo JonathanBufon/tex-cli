@@ -218,6 +218,36 @@ fn banner_appears_on_templates_remove_stderr() {
 }
 
 #[test]
+fn banner_appears_on_build_stderr() {
+    let home = TempDir::new().unwrap();
+    write_valid_config(&home);
+    let templates_dir = home.path().join(".config").join("tex").join("templates");
+    let output_dir = home.path().join(".config").join("tex").join("output");
+    std::fs::create_dir_all(&templates_dir).unwrap();
+    std::fs::create_dir_all(&output_dir).unwrap();
+    std::fs::write(
+        templates_dir.join("artigo.tex"),
+        "\\documentclass{article}\n\\begin{document}{{ n }}\n\\end{document}\n",
+    )
+    .unwrap();
+    rewrite_config_pointing_both(&home, &templates_dir, &output_dir);
+
+    let data = home.path().join("d.json");
+    std::fs::write(&data, br#"{"n":"World"}"#).unwrap();
+
+    let out = base_cmd(&home)
+        .arg("build")
+        .arg("artigo")
+        .arg(data.to_str().unwrap())
+        .output()
+        .unwrap();
+
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert_banner_in_stderr_only(&stdout, &stderr);
+}
+
+#[test]
 fn banner_appears_on_compile_stderr() {
     let home = TempDir::new().unwrap();
     write_valid_config(&home);
