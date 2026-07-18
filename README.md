@@ -13,11 +13,11 @@ JSON para documentos LaTeX e compila esses documentos para PDF via
 `tectonic` (padrão) ou outro engine plugável. Este binário é a camada
 de automação sobre o ecossistema LaTeX — não uma reimplementação dele.
 
-Esta v1 entrega a base da ferramenta: gestão do arquivo de
-configuração em `~/.config/tex/config.toml` via três subcomandos
-(`init`, `config show`, `config set`). Etapas futuras vão empilhar
-sobre essa base os subcomandos `templates`, `render`, `compile` e
-`build`.
+Esta versão fecha o pipeline **JSON → PDF end-to-end**: `init` e
+`config` para gerenciar `~/.config/tex/config.toml`, `templates` para
+administrar o catálogo `.tex`, `render` para aplicar dados JSON em
+template, `compile` para produzir PDF a partir de um `.tex`, e o novo
+`build` para orquestrar render + compile em uma única invocação.
 
 ## Instalação
 
@@ -186,6 +186,41 @@ Contratos importantes:
   filesystem após o comando (garantido por RAII do tempfile).
 - `stdout` reporta path do PDF + tempo de compilação:
   `PDF gerado em <path>. Compilação levou X.Ys.`
+
+### Pipeline JSON → PDF (`build`)
+
+O subcomando `build` orquestra render + compile numa única invocação —
+o "fecha" do pipeline JSON → PDF end-to-end.
+
+```bash
+tex-cli build <template> <data.json>                 # grava em output_dir/<template>.pdf
+tex-cli build <template> <data.json> --output <path> # path custom do PDF
+tex-cli build <template> <data.json> --engine latexmk # sobrescreve engine só nesta invocação
+tex-cli build <template> <data.json> --keep-tex      # preserva .tex intermediário em output_dir
+tex-cli build <template> <data.json> --keep-logs     # copia .log do engine
+tex-cli build <template> <data.json> --no-keep-tex   # inverte default do config
+tex-cli build <template> <data.json> --force         # sobrescreve PDF existente
+
+echo '{"titulo":"X"}' | tex-cli build <template> -   # JSON via stdin
+tex-cli build                                        # menu interativo
+```
+
+Contratos importantes:
+
+- Reusa integralmente `render` (spec 003) e `compile` (spec 004) — o
+  módulo `build.rs` é orquestrador puro, zero lógica nova de LaTeX.
+- Com `--keep-tex`, o `.tex` intermediário é gravado em
+  `output_dir/<template>.tex` **antes** do compile — assim uma falha de
+  compilação preserva o arquivo para debug (FR-15).
+- `--engine <name>` não altera o config; a chave `compiler.engine`
+  permanece imutável após a invocação (SC-005).
+- Nenhum artefato residual: TempDir do render/compile é limpo por RAII
+  mesmo em falha (SC-006).
+- `stdout` reporta path do PDF + tempo total do pipeline:
+  `PDF gerado em <path>. Pipeline (render + compile) levou X.Ys.`
+- Modo interativo em TTY: Select do template + Text do JSON + Confirm
+  keep_tex/keep_logs; fora de TTY delega para exit 1 orientando o CLI
+  direto.
 
 ### Verbosidade
 
