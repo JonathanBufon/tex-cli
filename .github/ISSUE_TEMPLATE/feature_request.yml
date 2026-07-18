@@ -1,0 +1,62 @@
+name: Feature request
+description: Propose a new feature or enhancement
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing a feature. Before you invest time in
+        writing code, please describe the use case here so we can align
+        on scope. Larger features may go through the Spec Kit workflow
+        (`specs/NNN-…/`) — see [CONTRIBUTING.md](../../CONTRIBUTING.md#feature-workflow-spec-kit).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / use case
+      description: |
+        What are you trying to do that tex-cli doesn't currently
+        support? Focus on the *problem*, not the *solution*.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: |
+        Sketch the CLI, flags, or behavior you'd like. Alternatives
+        you considered are also useful.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+      description: Existing workarounds, tools that do this today, etc.
+
+  - type: dropdown
+    id: principle
+    attributes:
+      label: Which principle does this touch?
+      description: See the project constitution in `.specify/memory/constitution.md`.
+      multiple: true
+      options:
+        - I. Personal scope — no LaTeX replacement
+        - II. Separation of data / template / PDF layers
+        - III. Dual interface (CLI + interactive)
+        - IV. Pluggable compiler engine
+        - V. Safe file handling
+        - None / cross-cutting
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: I've read the [constitution](../../.specify/memory/constitution.md) and this proposal does not conflict with it.
+          required: false
