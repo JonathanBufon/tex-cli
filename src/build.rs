@@ -55,10 +55,7 @@ pub fn build_pipeline(
     // 1-2. Read template.
     let template_bytes = templates::read_template(&cfg.paths.templates_dir, template_name)?;
     let template_src = std::str::from_utf8(&template_bytes).map_err(|e| TexError::InvalidUtf8 {
-        source_path: cfg
-            .paths
-            .templates_dir
-            .join(format!("{template_name}.tex")),
+        source_path: cfg.paths.templates_dir.join(format!("{template_name}.tex")),
         detail: e.to_string(),
     })?;
 
@@ -69,10 +66,7 @@ pub fn build_pipeline(
     let start_render = Instant::now();
     let rendered = render::render_template(template_name, template_src, &value)?;
     let render_duration = start_render.elapsed();
-    tracing::info!(
-        "Render concluído em {}ms",
-        render_duration.as_millis()
-    );
+    tracing::info!("Render concluído em {}ms", render_duration.as_millis());
 
     // 7. If keep_tex, write intermediate .tex to output_dir BEFORE compile
     // so a compile failure preserves it for debugging (FR-15).
