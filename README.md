@@ -8,42 +8,42 @@
 ```
 # tex-cli
 
-CLI de terminal, escrita em Rust, que converte dados estruturados em
-JSON para documentos LaTeX e compila esses documentos para PDF via
-`tectonic` (padrão) ou outro engine plugável. Este binário é a camada
-de automação sobre o ecossistema LaTeX — não uma reimplementação dele.
+A terminal CLI written in Rust that turns structured JSON data into
+LaTeX documents and compiles them to PDF via `tectonic` (default) or
+another pluggable engine. This binary is an automation layer over the
+LaTeX ecosystem — not a reimplementation of it.
 
-Esta versão fecha o pipeline **JSON → PDF end-to-end**: `init` e
-`config` para gerenciar `~/.config/tex/config.toml`, `templates` para
-administrar o catálogo `.tex`, `render` para aplicar dados JSON em
-template, `compile` para produzir PDF a partir de um `.tex`, e o novo
-`build` para orquestrar render + compile em uma única invocação.
+This release closes the **JSON → PDF end-to-end** pipeline: `init` and
+`config` for managing `~/.config/tex/config.toml`, `templates` for
+administering the `.tex` catalog, `render` for applying JSON data to a
+template, `compile` for producing a PDF from a `.tex`, and the new
+`build` for orchestrating render + compile in a single invocation.
 
-## Instalação
+## Installation
 
-Requer Rust stable (edição 2021).
+Requires Rust stable (edition 2021).
 
 ```bash
 cargo install --path .
 ```
 
-Depois de instalar, verifique:
+After installing, verify:
 
 ```bash
 tex-cli --version
 ```
 
-## Uso básico
+## Basic usage
 
-### Primeira configuração
+### First-time setup
 
-Interativo:
+Interactive:
 
 ```bash
 tex-cli init
 ```
 
-Ou não-interativo (útil em scripts / CI):
+Or non-interactive (useful in scripts / CI):
 
 ```bash
 tex-cli init \
@@ -53,32 +53,32 @@ tex-cli init \
   --create-dirs
 ```
 
-Flags disponíveis:
+Available flags:
 
-- `-t, --templates-dir <path>` — pula o prompt de templates
-- `-o, --output-dir <path>` — pula o prompt de output
-- `-e, --engine <name>` — pula o prompt de engine (`tectonic`,
+- `-t, --templates-dir <path>` — skips the templates prompt
+- `-o, --output-dir <path>` — skips the output prompt
+- `-e, --engine <name>` — skips the engine prompt (`tectonic`,
   `latexmk`, `pdflatex`, `xelatex`, `lualatex`)
-- `--create-dirs` — cria diretórios ausentes sem confirmar
-- `--force` — sobrescreve config existente sem confirmar
+- `--create-dirs` — creates missing directories without confirming
+- `--force` — overwrites an existing config without confirming
 
-### Inspecionar o config
+### Inspecting the config
 
 ```bash
-tex-cli config show                    # padrão: humano
-tex-cli config show --format json      # pipe direto pro jq
-tex-cli config show --format toml      # re-serialização TOML
+tex-cli config show                    # default: human
+tex-cli config show --format json      # pipe straight into jq
+tex-cli config show --format toml      # TOML re-serialization
 ```
 
-### Alterar uma chave
+### Changing a key
 
 ```bash
 tex-cli config set compiler.keep_tex false
-tex-cli config set paths.templates_dir ~/nova/pasta
+tex-cli config set paths.templates_dir ~/new/folder
 tex-cli config set compiler.engine tectonic
 ```
 
-Chaves aceitas (dotted-path canônico, sem aliases):
+Accepted keys (canonical dotted-path, no aliases):
 
 - `paths.templates_dir`
 - `paths.output_dir`
@@ -87,144 +87,148 @@ Chaves aceitas (dotted-path canônico, sem aliases):
 - `compiler.keep_logs`
 - `behavior.ask_output_path_every_time`
 
-### Gerenciar templates
+### Managing templates
 
-O grupo `templates` administra os arquivos `.tex` que ficam em
+The `templates` group administers the `.tex` files stored under
 `paths.templates_dir`.
 
 ```bash
-tex-cli templates list                     # padrão: humano
-tex-cli templates list --format json       # pipe direto pro jq
+tex-cli templates list                     # default: human
+tex-cli templates list --format json       # pipe straight into jq
 
-tex-cli templates show artigo              # bytes brutos em stdout
-tex-cli templates show artigo.tex          # extensão opcional
+tex-cli templates show article             # raw bytes to stdout
+tex-cli templates show article.tex         # extension optional
 
-tex-cli templates add /tmp/novo.tex                  # basename → novo
-tex-cli templates add /tmp/x.tex --name relatorio    # nome custom
-tex-cli templates add /tmp/x.tex --force             # sobrescreve
+tex-cli templates add /tmp/new.tex                   # basename → new
+tex-cli templates add /tmp/x.tex --name report       # custom name
+tex-cli templates add /tmp/x.tex --force             # overwrite
 
-tex-cli templates remove artigo --force    # remove sem prompt
+tex-cli templates remove article --force   # remove without prompt
 
-tex-cli templates                          # menu interativo (TTY)
+tex-cli templates                          # interactive menu (TTY)
 ```
 
-Contratos importantes:
+Important contracts:
 
-- `list --format json` produz JSON válido para pipe em `jq` (mesmo
-  com diretório vazio → `[]`).
-- Cada template carrega `modified_at_epoch` (segundos desde
-  UNIX_EPOCH); use `jq '... | strftime("%Y-%m-%dT%H:%M:%SZ")'` para
-  formatar em RFC3339.
-- `add` valida UTF-8 antes de gravar e faz escrita atômica com
-  permissão `0644` (compartilhável via git, ao contrário do config).
-- `remove` exige `--force` ou confirmação em terminal interativo.
+- `list --format json` produces valid JSON for piping into `jq` (even
+  with an empty directory → `[]`).
+- Each template carries `modified_at_epoch` (seconds since
+  UNIX_EPOCH); use `jq '... | strftime("%Y-%m-%dT%H:%M:%SZ")'` to
+  format as RFC3339.
+- `add` validates UTF-8 before writing and performs an atomic write
+  with `0644` permissions (shareable via git, unlike the config).
+- `remove` requires `--force` or confirmation in an interactive
+  terminal.
 
-Exemplos curados de templates estão em [`examples/templates/`](examples/templates/)
-com atribuição ao autor original.
+Curated template examples live under [`examples/templates/`](examples/templates/)
+with attribution to the original author.
 
-### Renderizar JSON → `.tex`
+### Rendering JSON → `.tex`
 
-O subcomando `render` aplica dados JSON num template LaTeX e produz o
-`.tex` intermediário — a peça central do pipeline Data → Template →
-PDF.
+The `render` subcommand applies JSON data to a LaTeX template and
+produces the intermediate `.tex` — the central piece of the Data →
+Template → PDF pipeline.
 
 ```bash
-tex-cli render <template> <data.json>            # grava em output_dir
+tex-cli render <template> <data.json>            # writes to output_dir
 tex-cli render <template> <data.json> --output <path>
-tex-cli render <template> <data.json> --dry-run  # stdout, não grava
-tex-cli render <template> <data.json> --force    # sobrescreve
+tex-cli render <template> <data.json> --dry-run  # stdout, no write
+tex-cli render <template> <data.json> --force    # overwrite
 
-echo '{"nome":"Ana"}' | tex-cli render greeting -  # JSON via stdin
+echo '{"name":"Ana"}' | tex-cli render greeting -  # JSON via stdin
 
-tex-cli render                                    # menu interativo
+tex-cli render                                    # interactive menu
 ```
 
-Contratos importantes:
+Important contracts:
 
-- Template usa sintaxe [`tera`](https://keats.github.io/tera/) —
-  `{{ var }}`, `{% if %}`, filtros built-in (`upper`, `lower`,
+- Templates use [`tera`](https://keats.github.io/tera/) syntax —
+  `{{ var }}`, `{% if %}`, built-in filters (`upper`, `lower`,
   `default`, `join`, `length`, etc.).
-- JSON MUST ser um objeto top-level. Arrays no topo são rejeitados
-  com exit 31 e mensagem clara.
-- Autoescape=false por design — `.tex` não é HTML, escapes ficam
-  literais (`&`, `%`, `$` preservados).
-- Escrita atômica com permissão `0644`.
-- `--dry-run` produz stdout byte-a-byte idêntico ao arquivo que
-  seria gravado (SC-005).
-- `render` sem args em TTY abre menu (Select do template + Text do
-  JSON + Confirm de dry-run). Fora de TTY: exit 1 com mensagem
-  orientando o subcomando direto.
+- JSON MUST be a top-level object. Top-level arrays are rejected with
+  exit 31 and a clear message.
+- Autoescape=false by design — `.tex` is not HTML, escapes stay
+  literal (`&`, `%`, `$` preserved).
+- Atomic writes with `0644` permissions.
+- `--dry-run` produces stdout byte-for-byte identical to the file
+  that would be written (SC-005).
+- `render` with no args in a TTY opens the menu (Select template +
+  Text JSON + Confirm dry-run). Outside a TTY: exit 1 with a message
+  pointing to the direct subcommand.
 
-### Compilar `.tex` → PDF
+### Compiling `.tex` → PDF
 
-O subcomando `compile` transforma um `.tex` em PDF usando o engine
-configurado. Fecha o pipeline JSON → PDF junto com `render`.
+The `compile` subcommand turns a `.tex` into a PDF using the
+configured engine. Closes the JSON → PDF pipeline together with
+`render`.
 
 ```bash
-tex-cli compile <tex-file>                            # grava em output_dir
-tex-cli compile <tex-file> --output <path>           # path custom
-tex-cli compile <tex-file> --engine latexmk          # sobrescreve engine só nesta invocação
-tex-cli compile <tex-file> --keep-tex --keep-logs    # copia .tex e .log pro output_dir
-tex-cli compile <tex-file> --no-keep-tex             # inverte default do config
-tex-cli compile <tex-file> --force                   # sobrescreve PDF existente
+tex-cli compile <tex-file>                            # writes to output_dir
+tex-cli compile <tex-file> --output <path>           # custom path
+tex-cli compile <tex-file> --engine latexmk          # override engine for this invocation only
+tex-cli compile <tex-file> --keep-tex --keep-logs    # copies .tex and .log to output_dir
+tex-cli compile <tex-file> --no-keep-tex             # inverts the config default
+tex-cli compile <tex-file> --force                   # overwrites existing PDF
 
-tex-cli compile                                       # menu interativo
+tex-cli compile                                       # interactive menu
 ```
 
-Contratos importantes:
+Important contracts:
 
-- Engine default vem de `compiler.engine` do config (`tectonic` é o
-  padrão). `--engine <name>` sobrescreve **só nesta invocação** — o
-  config file permanece imutável.
-- Engines aceitos: `tectonic`, `latexmk`, `pdflatex`, `xelatex`,
-  `lualatex`. Fora dessa lista → exit 42.
-- Engine não instalado no PATH → exit 41 com mensagem clara.
-- Erro de compilação → exit 40, stderr contém as **últimas ~30 linhas**
-  do `.log` do engine para diagnóstico direto.
-- PDF gravado atomicamente com permissão `0644`.
-- Compilação roda em `TempDir` isolado; nenhum artefato residual no
-  filesystem após o comando (garantido por RAII do tempfile).
-- `stdout` reporta path do PDF + tempo de compilação:
+- The default engine comes from `compiler.engine` in the config
+  (`tectonic` is the default). `--engine <name>` overrides **only for
+  this invocation** — the config file stays immutable.
+- Accepted engines: `tectonic`, `latexmk`, `pdflatex`, `xelatex`,
+  `lualatex`. Anything else → exit 42.
+- Engine not installed on PATH → exit 41 with a clear message.
+- Compile error → exit 40, stderr contains the **last ~30 lines** of
+  the engine's `.log` for direct diagnosis.
+- PDF written atomically with `0644` permissions.
+- Compilation runs in an isolated `TempDir`; no residual artifacts on
+  the filesystem after the command (guaranteed by tempfile RAII).
+- `stdout` reports the PDF path and compile time:
   `PDF gerado em <path>. Compilação levou X.Ys.`
 
-### Pipeline JSON → PDF (`build`)
+### JSON → PDF pipeline (`build`)
 
-O subcomando `build` orquestra render + compile numa única invocação —
-o "fecha" do pipeline JSON → PDF end-to-end.
+The `build` subcommand orchestrates render + compile in a single
+invocation — the "closer" of the JSON → PDF end-to-end pipeline.
 
 ```bash
-tex-cli build <template> <data.json>                 # grava em output_dir/<template>.pdf
-tex-cli build <template> <data.json> --output <path> # path custom do PDF
-tex-cli build <template> <data.json> --engine latexmk # sobrescreve engine só nesta invocação
-tex-cli build <template> <data.json> --keep-tex      # preserva .tex intermediário em output_dir
-tex-cli build <template> <data.json> --keep-logs     # copia .log do engine
-tex-cli build <template> <data.json> --no-keep-tex   # inverte default do config
-tex-cli build <template> <data.json> --force         # sobrescreve PDF existente
+tex-cli build <template> <data.json>                 # writes to output_dir/<template>.pdf
+tex-cli build <template> <data.json> --output <path> # custom PDF path
+tex-cli build <template> <data.json> --engine latexmk # override engine for this invocation only
+tex-cli build <template> <data.json> --keep-tex      # preserves the intermediate .tex in output_dir
+tex-cli build <template> <data.json> --keep-logs     # copies the engine's .log
+tex-cli build <template> <data.json> --no-keep-tex   # inverts the config default
+tex-cli build <template> <data.json> --force         # overwrites existing PDF
 
-echo '{"titulo":"X"}' | tex-cli build <template> -   # JSON via stdin
-tex-cli build                                        # menu interativo
+echo '{"title":"X"}' | tex-cli build <template> -    # JSON via stdin
+tex-cli build                                        # interactive menu
 ```
 
-Contratos importantes:
+Important contracts:
 
-- Reusa integralmente `render` (spec 003) e `compile` (spec 004) — o
-  módulo `build.rs` é orquestrador puro, zero lógica nova de LaTeX.
-- Com `--keep-tex`, o `.tex` intermediário é gravado em
-  `output_dir/<template>.tex` **antes** do compile — assim uma falha de
-  compilação preserva o arquivo para debug (FR-15).
-- `--engine <name>` não altera o config; a chave `compiler.engine`
-  permanece imutável após a invocação (SC-005).
-- Nenhum artefato residual: TempDir do render/compile é limpo por RAII
-  mesmo em falha (SC-006).
-- `stdout` reporta path do PDF + tempo total do pipeline:
+- Fully reuses `render` (spec 003) and `compile` (spec 004) — the
+  `build.rs` module is a pure orchestrator, with zero new LaTeX
+  logic.
+- With `--keep-tex`, the intermediate `.tex` is written to
+  `output_dir/<template>.tex` **before** compile — so a compile
+  failure preserves the file for debugging (FR-15).
+- `--engine <name>` does not alter the config; the
+  `compiler.engine` key remains immutable after the invocation
+  (SC-005).
+- No residual artifacts: the render/compile TempDir is cleaned by
+  RAII even on failure (SC-006).
+- `stdout` reports the PDF path and total pipeline time:
   `PDF gerado em <path>. Pipeline (render + compile) levou X.Ys.`
-- Modo interativo em TTY: Select do template + Text do JSON + Confirm
-  keep_tex/keep_logs; fora de TTY delega para exit 1 orientando o CLI
-  direto.
+- Interactive mode in a TTY: Select template + Text JSON + Confirm
+  keep_tex/keep_logs; outside a TTY it delegates to exit 1 pointing
+  to the direct CLI.
 
-### Verbosidade
+### Verbosity
 
-Flag global `-v` repetível em qualquer subcomando:
+Repeatable global `-v` flag on any subcommand:
 
 ```bash
 tex-cli -v config show      # INFO
@@ -232,55 +236,66 @@ tex-cli -vv init            # DEBUG
 tex-cli -vvv config set ... # TRACE
 ```
 
-Logs vão sempre para stderr; stdout fica limpo para pipes.
+Logs always go to stderr; stdout stays clean for pipes.
 
-## Códigos de saída
+## Exit codes
 
-| Código | Significado                           |
-|--------|---------------------------------------|
-| 0      | Sucesso                               |
-| 1      | Erro genérico não classificado        |
-| 2      | Erro de argumento CLI (via clap)      |
-| 10     | Config ausente                        |
-| 11     | Config corrompido (TOML inválido)     |
-| 12     | Chave desconhecida em `config set`    |
-| 13     | Valor inválido (ex.: bool malformado) |
-| 14     | Permissão negada ao gravar            |
-| 15     | Usuário abortou operação interativa   |
-| 20     | Template não existe (`show`/`remove`/`render`) |
-| 21     | Arquivo do `add` não é UTF-8 válido   |
-| 22     | `paths.templates_dir` inexistente     |
-| 30     | Erro do tera durante render (var indefinida, syntax) |
-| 31     | JSON inválido (parse ou forma) no `render` |
-| 40     | Falha do engine LaTeX durante `compile` (log tail em stderr) |
-| 41     | Engine LaTeX não está instalado no PATH                       |
-| 42     | Engine não suportado (fora de tectonic/latexmk/pdflatex/xelatex/lualatex) |
+| Code   | Meaning                                                             |
+|--------|---------------------------------------------------------------------|
+| 0      | Success                                                             |
+| 1      | Generic unclassified error                                          |
+| 2      | CLI argument error (via clap)                                       |
+| 10     | Config missing                                                      |
+| 11     | Corrupted config (invalid TOML)                                     |
+| 12     | Unknown key in `config set`                                         |
+| 13     | Invalid value (e.g., malformed bool)                                |
+| 14     | Permission denied while writing                                     |
+| 15     | User aborted an interactive operation                               |
+| 20     | Template does not exist (`show`/`remove`/`render`)                  |
+| 21     | File passed to `add` is not valid UTF-8                             |
+| 22     | `paths.templates_dir` does not exist                                |
+| 30     | Tera error during render (undefined var, syntax)                    |
+| 31     | Invalid JSON (parse or shape) in `render`                           |
+| 40     | LaTeX engine failure during `compile` (log tail on stderr)          |
+| 41     | LaTeX engine not installed on PATH                                  |
+| 42     | Unsupported engine (outside tectonic/latexmk/pdflatex/xelatex/lualatex) |
 
-## Desenvolvimento
+## Development
 
-Testes rodam em container Debian com Rust + tectonic:
+Tests run inside a Debian container with Rust + tectonic:
 
 ```bash
 docker build -t tex-cli -f docker/Dockerfile .
 docker run --rm -v $(pwd):/src -w /src tex-cli cargo test --all
 ```
 
-Higiene padrão antes de commit:
+Standard hygiene before committing:
 
 ```bash
 docker run --rm -v $(pwd):/src -w /src tex-cli \
   sh -lc "cargo fmt --all -- --check && cargo clippy --all-targets --all-features -- -D warnings"
 ```
 
-Detalhes em [`docker/README.md`](docker/README.md).
+Details in [`docker/README.md`](docker/README.md).
 
-## Documentação de design
+## Design documentation
 
-- [Constituição do projeto](.specify/memory/constitution.md)
-- [Spec da v1 (config init/show/set)](specs/001-config-init-management/spec.md)
+- [Project constitution](.specify/memory/constitution.md)
+- [v1 spec (config init/show/set)](specs/001-config-init-management/spec.md)
 - [Plan](specs/001-config-init-management/plan.md)
 - [Quickstart](specs/001-config-init-management/quickstart.md)
 
-## Licença
+## Contributing
 
-Ver arquivo [`LICENSE`](LICENSE).
+Contributions are welcome. Before opening a PR, please read:
+
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — setup, workflow, commit/branch conventions
+- [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) — Contributor Covenant v2.1
+- [`SECURITY.md`](SECURITY.md) — vulnerability reporting (private)
+- [`CHANGELOG.md`](CHANGELOG.md) — version history
+
+Bugs and feature requests via [GitHub issues](https://github.com/JonathanBufon/tex-cli/issues/new/choose).
+
+## License
+
+See the [`LICENSE`](LICENSE) file.
