@@ -15,6 +15,7 @@ use to ship changes.
 - [Code style](#code-style)
 - [Commit and branch conventions](#commit-and-branch-conventions)
 - [Feature workflow (Spec Kit)](#feature-workflow-spec-kit)
+- [Contributions with AI assistance](#contributions-with-ai-assistance)
 - [Pull request process](#pull-request-process)
 - [Reporting bugs and requesting features](#reporting-bugs-and-requesting-features)
 
@@ -150,7 +151,9 @@ when the changes are logically distinct.
 ## Feature workflow (Spec Kit)
 
 Non-trivial features go through the [Spec Kit](https://github.com/github/spec-kit)
-workflow, which lives under `specs/NNN-feature-name/`:
+workflow, which lives under `specs/NNN-feature-name/`. See the
+[Spec Kit documentation](https://github.com/github/spec-kit#readme) for
+a full reference — the summary below is enough to get started.
 
 1. **`speckit-specify`** — write `spec.md` (what and why, no
    implementation details).
@@ -163,6 +166,93 @@ workflow, which lives under `specs/NNN-feature-name/`:
 You don't need to use Spec Kit for bug fixes, small refactors, or docs
 changes. Use judgment: if the change touches multiple modules or
 introduces a new user-facing behavior, a spec is worth writing.
+
+### Example: end-to-end flow
+
+Adding a hypothetical `--watch` mode to `build`, with an AI coding
+assistant (Claude Code, Codex, Copilot, or similar):
+
+```bash
+# 1. Draft the spec (what + why, not how)
+/speckit-specify Add --watch mode to `build` that rebuilds the PDF
+                 whenever the template or JSON changes on disk.
+# → creates specs/006-watch-mode/spec.md
+#   review it, tighten the language, commit
+
+# 2. Turn the spec into a plan
+/speckit-plan
+# → creates plan.md, research.md, data-model.md, contracts/, quickstart.md
+#   review each artifact — this is where you catch bad architecture
+#   before it becomes code
+
+# 3. Break the plan into tasks
+/speckit-tasks
+# → creates tasks.md with T001..TNN, ordered by dependency
+
+# 4. Execute — the agent works through tasks, committing per task
+/speckit-implement
+# → each task becomes 1-2 commits; you review the diff between tasks
+
+# 5. Run the full suite locally before opening the PR
+docker run --rm -v $(pwd):/src -w /src tex-cli \
+  sh -lc "cargo fmt --all -- --check && \
+          cargo clippy --all-targets --all-features -- -D warnings && \
+          cargo test --all"
+```
+
+Every past feature in `specs/001-…/` through `specs/005-…/` was built
+this way — read those directories if you want a concrete reference.
+
+## Contributions with AI assistance
+
+`tex-cli` welcomes contributions written with AI coding assistants
+(Claude Code, Codex, GitHub Copilot, Cursor, etc.). AI-generated code is
+not treated differently at review time, but the failure modes are
+different from human-written code, and contributors are responsible for
+catching them before the PR lands.
+
+### Recommended workflow
+
+- **Use Spec Kit for anything non-trivial.** The `spec → plan → tasks →
+  implement` chain gives the agent structured context that reduces
+  hallucination and keeps the change reviewable. Feeding "add a watch
+  mode" straight into `/speckit-implement` without a spec produces
+  worse output than the four-step pipeline.
+- **Read every diff.** Do not commit code you have not read. LLMs
+  produce confident-looking output that can be subtly wrong.
+- **Commit incrementally.** One PR = one feature; one commit = one
+  coherent change. Do not push a single 2000-line "AI made it work"
+  commit — it is not reviewable and will be sent back.
+
+### What to verify before opening the PR
+
+- **Tests actually test the behavior they claim.** A common LLM
+  failure mode is a test that passes vacuously (e.g. asserts on a
+  hard-coded string it just wrote) without exercising the code path.
+  Read each assertion.
+- **APIs and crate features exist.** LLMs hallucinate function
+  signatures, feature flags, and trait bounds. Cross-check anything
+  unfamiliar against [docs.rs](https://docs.rs/) or `cargo doc --open`.
+- **Error paths propagate `TexError`** with the correct exit code
+  (see `src/error.rs`). LLMs sometimes invent new error types or
+  swallow errors silently.
+- **No new dependencies** slipped in. Run `git diff Cargo.toml
+  Cargo.lock` before pushing.
+- **License-clean.** If the assistant produced a large block that
+  looks copied from a known source, do not commit it. Refactor from
+  first principles or leave it out.
+
+### Disclosure in the PR
+
+You do not have to disclose that an assistant was involved, but if it
+did substantial work on the change, we appreciate a short note in the
+PR body (e.g., "Drafted with Claude Code, all commits reviewed and
+tests re-run manually"). This helps reviewers weigh what to look at
+more carefully.
+
+For commit attribution, the assistants that support it typically add
+their own `Co-Authored-By:` trailer — that is fine and welcomed, but
+never required.
 
 ## Pull request process
 
