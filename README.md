@@ -187,7 +187,7 @@ Important contracts:
 - Compilation runs in an isolated `TempDir`; no residual artifacts on
   the filesystem after the command (guaranteed by tempfile RAII).
 - `stdout` reports the PDF path and compile time:
-  `PDF gerado em <path>. Compilação levou X.Ys.`
+  `PDF generated at <path>. Compile took X.Ys.`
 
 ### JSON → PDF pipeline (`build`)
 
@@ -221,7 +221,7 @@ Important contracts:
 - No residual artifacts: the render/compile TempDir is cleaned by
   RAII even on failure (SC-006).
 - `stdout` reports the PDF path and total pipeline time:
-  `PDF gerado em <path>. Pipeline (render + compile) levou X.Ys.`
+  `PDF generated at <path>. Pipeline (render + compile) took X.Ys.`
 - Interactive mode in a TTY: Select template + Text JSON + Confirm
   keep_tex/keep_logs; outside a TTY it delegates to exit 1 pointing
   to the direct CLI.
