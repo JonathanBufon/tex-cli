@@ -4,16 +4,16 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum TexError {
-    #[error("Nenhum config encontrado. Rode 'tex-cli init' primeiro.")]
+    #[error("No config found. Run 'tex-cli init' first.")]
     ConfigMissing,
 
     #[error(
-        "Config em {path} está inválido: {detail}. Rode 'tex-cli init' novamente para recriar."
+        "Config at {path} is invalid: {detail}. Run 'tex-cli init' again to recreate."
     )]
     ConfigCorrupted { path: PathBuf, detail: String },
 
     #[error(
-        "Chave desconhecida: '{key}'. Chaves aceitas:\n{}",
+        "Unknown key: '{key}'. Accepted keys:\n{}",
         format_accepted(accepted)
     )]
     UnknownKey {
@@ -21,50 +21,50 @@ pub enum TexError {
         accepted: Vec<&'static str>,
     },
 
-    #[error("Valor inválido para chave booleana '{key}': '{value}'. Aceito: true, false.")]
+    #[error("Invalid value for boolean key '{key}': '{value}'. Accepted: true, false.")]
     InvalidBoolValue { key: String, value: String },
 
-    #[error("Permissão negada ao acessar {path}.")]
+    #[error("Permission denied while accessing {path}.")]
     PermissionDenied { path: PathBuf },
 
-    #[error("Operação cancelada pelo usuário.")]
+    #[error("Operation cancelled by user.")]
     UserAborted,
 
-    #[error("Não foi possível resolver o diretório home do usuário.")]
+    #[error("Could not resolve the user's home directory.")]
     HomeDirUnavailable,
 
-    #[error("Template '{name}' não existe em {}.", templates_dir.display())]
+    #[error("Template '{name}' not found in {}.", templates_dir.display())]
     TemplateNotFound {
         name: String,
         templates_dir: PathBuf,
     },
 
-    #[error("Arquivo '{}' não é texto UTF-8 válido: {detail}.", source_path.display())]
+    #[error("File '{}' is not valid UTF-8 text: {detail}.", source_path.display())]
     InvalidUtf8 {
         source_path: PathBuf,
         detail: String,
     },
 
     #[error(
-        "Diretório de templates '{}' não existe. \
-         Rode 'tex-cli config set paths.templates_dir <path>' \
-         ou crie o diretório.",
+        "Templates directory '{}' not found. \
+         Run 'tex-cli config set paths.templates_dir <path>' \
+         or create the directory.",
         templates_dir.display()
     )]
     TemplatesDirMissing { templates_dir: PathBuf },
 
-    #[error("Falha ao renderizar template '{template_name}': {detail}")]
+    #[error("Failed to render template '{template_name}': {detail}")]
     TeraRenderError {
         template_name: String,
         detail: String,
     },
 
-    #[error("JSON inválido em {source_name}: {detail}")]
+    #[error("Invalid JSON in {source_name}: {detail}")]
     InvalidJson { source_name: String, detail: String },
 
     #[error(
-        "Falha ao compilar '{}': engine '{engine}' retornou erro.\n\
-         Últimas linhas do log:\n{log_tail}\n",
+        "Failed to compile '{}': engine '{engine}' returned an error.\n\
+         Last lines of the log:\n{log_tail}\n",
         tex_path.display()
     )]
     CompileFailed {
@@ -74,13 +74,13 @@ pub enum TexError {
     },
 
     #[error(
-        "Engine '{engine}' não está instalado no PATH. \
-         Instale-o antes ou use --engine <outro>."
+        "Engine '{engine}' is not installed on PATH. \
+         Install it or use --engine <other>."
     )]
     EngineNotInstalled { engine: String },
 
     #[error(
-        "Engine '{engine}' não é suportado. Aceitos:\n{}",
+        "Engine '{engine}' is not supported. Accepted:\n{}",
         format_accepted(accepted)
     )]
     EngineNotSupported {
@@ -88,7 +88,7 @@ pub enum TexError {
         accepted: Vec<&'static str>,
     },
 
-    #[error("Erro de I/O: {0}")]
+    #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
 }
 
@@ -238,7 +238,7 @@ mod tests {
         assert!(msg.contains("/tmp/artigo.tex"));
         assert!(msg.contains("tectonic"));
         assert!(msg.contains("Undefined control sequence"));
-        assert!(msg.contains("Últimas linhas do log"));
+        assert!(msg.contains("Last lines of the log"));
     }
 
     #[test]
@@ -273,7 +273,7 @@ mod tests {
         };
         let msg = format!("{e}");
         assert!(msg.contains("artigo"));
-        assert!(msg.contains("renderizar"));
+        assert!(msg.contains("render"));
         assert!(msg.contains("Variable"));
     }
 
@@ -285,7 +285,7 @@ mod tests {
         };
         let msg = format!("{e}");
         assert!(msg.contains("/tmp/bad.json"));
-        assert!(msg.contains("JSON inválido"));
+        assert!(msg.contains("Invalid JSON"));
         assert!(msg.contains("line 3"));
     }
 
@@ -334,8 +334,8 @@ mod tests {
     }
 
     #[test]
-    fn display_messages_are_in_portuguese() {
+    fn display_messages_are_in_english() {
         assert!(format!("{}", TexError::ConfigMissing).contains("config"));
-        assert!(format!("{}", TexError::UserAborted).contains("cancelada"));
+        assert!(format!("{}", TexError::UserAborted).contains("cancelled"));
     }
 }
