@@ -178,7 +178,7 @@ fn compile_broken_tex_exits_40_with_log_tail() {
         .failure()
         .code(40)
         .stderr(
-            predicate::str::contains("Falha ao compilar").and(predicate::str::contains("broken")),
+            predicate::str::contains("Failed to compile").and(predicate::str::contains("broken")),
         );
 
     assert!(
@@ -221,7 +221,7 @@ fn compile_force_overwrites_existing_pdf() {
         .arg("--force")
         .assert()
         .success()
-        .stdout(predicate::str::contains("sobrescrito"));
+        .stdout(predicate::str::contains("overwritten"));
 
     let bytes = std::fs::read(&pdf).unwrap();
     assert!(
