@@ -14,6 +14,7 @@ use to ship changes.
 - [Running tests](#running-tests)
 - [Code style](#code-style)
 - [Commit and branch conventions](#commit-and-branch-conventions)
+- [Why Spec Kit?](#why-spec-kit)
 - [Feature workflow (Spec Kit)](#feature-workflow-spec-kit)
 - [Contributions with AI assistance](#contributions-with-ai-assistance)
 - [Pull request process](#pull-request-process)
@@ -148,6 +149,37 @@ docs: clarify --keep-tex behavior in README
 Keep commits focused. Prefer several small commits over one large one
 when the changes are logically distinct.
 
+## Why Spec Kit?
+
+`tex-cli` uses [Spec Kit](https://github.com/github/spec-kit) as its
+default feature-development workflow. This is an opinionated choice —
+here's the rationale.
+
+**It's currently the best automated way to pair-program with an LLM.**
+Model-agnostic: Claude Code, Codex, GitHub Copilot, Cursor, and other
+agents all handle the `spec → plan → tasks → implement` pipeline well
+because it produces durable, structured artifacts (`spec.md`, `plan.md`,
+`research.md`, `contracts/`, `tasks.md`) that the agent can re-read at
+any point. The workflow forces the model to write its own context down
+before writing code.
+
+**It mitigates the AI amnesia problem.** LLMs lose context across
+sessions and, on longer tasks, drift within a single session. Spec Kit
+does not eliminate this — nothing does today — but the artifact chain
+resolves the majority of it: when a session gets compacted, cleared, or
+resumed weeks later, the agent (or a different agent, or a human) can
+pick up from the specs directory instead of guessing intent from code.
+
+**It's also useful without any AI.** The same discipline — write down
+what and why, then how, then a task list — catches bad architecture
+before it becomes code. Even a solo human contributor gets clearer,
+more reviewable PRs out of it.
+
+**When you shouldn't use it.** Bug fixes, small refactors, docs
+changes, and typo hunts don't need a spec. Use judgment: if the change
+touches multiple modules or introduces new user-facing behavior, it's
+worth the ~15 minutes to draft the spec first.
+
 ## Feature workflow (Spec Kit)
 
 Non-trivial features go through the [Spec Kit](https://github.com/github/spec-kit)
@@ -163,9 +195,8 @@ a full reference — the summary below is enough to get started.
    task list, one PR-sized chunk each).
 4. **`speckit-implement`** — execute the tasks, committing incrementally.
 
-You don't need to use Spec Kit for bug fixes, small refactors, or docs
-changes. Use judgment: if the change touches multiple modules or
-introduces a new user-facing behavior, a spec is worth writing.
+See [Why Spec Kit?](#why-spec-kit) above for when this workflow is
+worth the setup cost and when to skip it.
 
 ### Example: end-to-end flow
 
