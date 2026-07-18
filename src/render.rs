@@ -23,7 +23,7 @@ pub fn render_template(
         return Err(TexError::InvalidJson {
             source_name: format!("template {template_name}"),
             detail: format!(
-                "esperado objeto no topo, recebido {}",
+                "expected top-level object, got {}",
                 type_name(json_value)
             ),
         });
@@ -199,7 +199,7 @@ mod tests {
         let err = render_template("test", "x", &json!(["a"])).unwrap_err();
         match err {
             TexError::InvalidJson { detail, .. } => {
-                assert!(detail.contains("array") || detail.contains("objeto"));
+                assert!(detail.contains("array") || detail.contains("object"));
             }
             other => panic!("expected InvalidJson, got {other:?}"),
         }

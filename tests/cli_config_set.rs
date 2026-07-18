@@ -156,7 +156,7 @@ fn set_engine_non_tectonic_warns_but_persists() {
         .args(["compiler.engine", "latexmk"])
         .assert()
         .success()
-        .stderr(predicate::str::contains("latexmk").and(predicate::str::contains("não")));
+        .stderr(predicate::str::contains("latexmk").and(predicate::str::contains("not")));
 
     let after = parse_toml(&cfg);
     assert_eq!(after["compiler"]["engine"].as_str(), Some("latexmk"));
@@ -173,7 +173,7 @@ fn set_path_nonexistent_dir_warns_but_persists() {
         .args(["paths.templates_dir", nonexistent.to_str().unwrap()])
         .assert()
         .success()
-        .stderr(predicate::str::contains("não existe"));
+        .stderr(predicate::str::contains("does not exist"));
 
     let after = parse_toml(&cfg);
     assert_eq!(

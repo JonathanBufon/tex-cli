@@ -204,11 +204,11 @@ pub fn read_template(dir: &Path, name: &str) -> Result<Vec<u8>, TexError> {
 
 pub fn render_template_list_humano(dir: &Path, templates: &[Template]) -> String {
     if templates.is_empty() {
-        return format!("Nenhum template encontrado em {}.\n", dir.display());
+        return format!("No templates found in {}.\n", dir.display());
     }
 
     let mut out = String::new();
-    out.push_str("NOME                  TAMANHO   MODIFICADO\n");
+    out.push_str("NAME                  SIZE      MODIFIED\n");
     for t in templates {
         let name = truncate_name(&t.name, 20);
         let modified = format_epoch_local(t.modified_at_epoch);
@@ -376,7 +376,7 @@ mod tests {
     #[test]
     fn render_humano_empty_dir_prints_placeholder() {
         let out = render_template_list_humano(Path::new("/tpl"), &[]);
-        assert!(out.contains("Nenhum template encontrado em /tpl"));
+        assert!(out.contains("No templates found in /tpl"));
     }
 
     #[test]
@@ -388,9 +388,9 @@ mod tests {
             modified_at_epoch: 1_700_000_000,
         }];
         let out = render_template_list_humano(Path::new("/tpl"), &templates);
-        assert!(out.contains("NOME"));
-        assert!(out.contains("TAMANHO"));
-        assert!(out.contains("MODIFICADO"));
+        assert!(out.contains("NAME"));
+        assert!(out.contains("SIZE"));
+        assert!(out.contains("MODIFIED"));
         assert!(out.contains("artigo"));
         assert!(out.contains("1234"));
     }

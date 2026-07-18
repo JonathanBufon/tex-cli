@@ -134,8 +134,8 @@ fn compile_stdout_mentions_path_and_duration() {
         .assert()
         .success()
         .stdout(
-            predicate::str::contains("PDF gerado em")
-                .and(predicate::str::contains("Compilação levou"))
+            predicate::str::contains("PDF generated at")
+                .and(predicate::str::contains("Compile took"))
                 .and(predicate::str::contains("s.")),
         );
 }
@@ -280,7 +280,7 @@ fn compile_engine_not_supported_exits_42() {
         .failure()
         .code(42)
         .stderr(
-            predicate::str::contains("Engine 'foo' não é suportado")
+            predicate::str::contains("Engine 'foo' is not supported")
                 .and(predicate::str::contains("tectonic"))
                 .and(predicate::str::contains("latexmk"))
                 .and(predicate::str::contains("pdflatex"))
@@ -310,7 +310,7 @@ fn compile_engine_not_installed_exits_41() {
     cmd.arg("compile").arg(tex.to_str().unwrap());
 
     cmd.assert().failure().code(41).stderr(
-        predicate::str::contains("Engine 'tectonic' não está instalado no PATH")
+        predicate::str::contains("Engine 'tectonic' is not installed on PATH")
             .and(predicate::str::contains("--engine")),
     );
 }

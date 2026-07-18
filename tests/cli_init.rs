@@ -148,7 +148,7 @@ fn init_warns_but_persists_when_tectonic_missing() {
     init_args(&mut cmd, &templates, &output, "tectonic");
 
     cmd.assert().success().stderr(
-        predicate::str::contains("tectonic").and(predicate::str::contains("não foi encontrado")),
+        predicate::str::contains("tectonic").and(predicate::str::contains("was not found")),
     );
 
     let cfg = config_path(&home);

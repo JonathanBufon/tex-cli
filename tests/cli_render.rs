@@ -64,7 +64,7 @@ fn render_writes_file_with_default_output_path() {
         .args(["artigo", data.to_str().unwrap()])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Renderizado em"));
+        .stdout(predicate::str::contains(".tex written to"));
 
     let out = output.join("artigo.tex");
     assert!(out.exists());
@@ -132,7 +132,7 @@ fn render_malformed_json_exits_31() {
         .assert()
         .failure()
         .code(31)
-        .stderr(predicate::str::contains("JSON inválido"));
+        .stderr(predicate::str::contains("Invalid JSON"));
 }
 
 #[test]
@@ -152,7 +152,7 @@ fn render_json_top_level_array_exits_31() {
         .assert()
         .failure()
         .code(31)
-        .stderr(predicate::str::contains("objeto"));
+        .stderr(predicate::str::contains("object"));
 }
 
 #[test]
@@ -250,7 +250,7 @@ fn render_dry_run_prints_to_stdout_and_no_file() {
     let out_bytes = assert.get_output().stdout.clone();
     let stdout = String::from_utf8(out_bytes).unwrap();
     assert!(stdout.contains("Hello, World."));
-    assert!(!stdout.contains("Renderizado em"));
+    assert!(!stdout.contains(".tex written to"));
     assert!(!output.join("artigo.tex").exists());
 }
 
@@ -408,7 +408,7 @@ fn render_force_overwrites_existing() {
         .args(["artigo", data.to_str().unwrap(), "--force"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("sobrescrito"));
+        .stdout(predicate::str::contains("overwritten"));
 
     assert_eq!(std::fs::read(&out).unwrap(), b"NOVO\n");
 }
