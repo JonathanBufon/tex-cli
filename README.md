@@ -294,6 +294,7 @@ Contributions are welcome. Before opening a PR, please read:
 - [`SECURITY.md`](SECURITY.md) — vulnerability reporting (private)
 - [`CHANGELOG.md`](CHANGELOG.md) — version history
 - [`ROADMAP.md`](ROADMAP.md) — road to `v1.0.0` (blockers, nice-to-haves, deferred scope)
+- [`SEMVER.md`](SEMVER.md) — versioning policy and stability contract
 
 Bugs and feature requests via [GitHub issues](https://github.com/JonathanBufon/tex-cli/issues/new/choose).
 

@@ -37,8 +37,10 @@ sequence.
 - [x] ~~Tag **`v0.1.0`**~~ — done 2026-07-18. Annotated tag at
       `d53839a` (last commit of spec 005), GitHub Release published:
       <https://github.com/JonathanBufon/tex-cli/releases/tag/v0.1.0>.
-- [ ] Add a **versioning policy** section to `CONTRIBUTING.md` (or a
-      `SEMVER.md`) making the stability contract above explicit.
+- [x] ~~Add a **versioning policy** section~~ — done 2026-07-18 as
+      [`SEMVER.md`](SEMVER.md). Defines public surface, bump rules,
+      deprecation policy, pre-1.0 behavior, MSRV stance, and the
+      release process.
 - [ ] Publish the crate to **crates.io** once — validates that
       `Cargo.toml` metadata is complete and reserves the name.
 
