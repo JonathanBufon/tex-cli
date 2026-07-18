@@ -452,11 +452,7 @@ pub fn handle_build(args: BuildArgs) -> Result<()> {
 
     let (template_name, data_source) = match (&args.template_name, &args.data_source) {
         (Some(t), Some(d)) => (t.clone(), d.clone()),
-        _ => {
-            return Err(anyhow!(
-                "modo interativo será implementado na US4. Use tex-cli build <template> <data.json>."
-            ));
-        }
+        _ => return handle_build_menu(&cfg),
     };
 
     let engine = crate::compiler::resolve_engine(args.engine.as_deref(), &cfg.compiler.engine)?;
@@ -523,6 +519,42 @@ pub fn handle_build(args: BuildArgs) -> Result<()> {
         );
     }
     Ok(())
+}
+
+fn handle_build_menu(cfg: &Config) -> Result<()> {
+    use std::io::IsTerminal;
+
+    if !std::io::stdin().is_terminal() {
+        return Err(anyhow!(
+            "Menu interativo de build requer terminal. Use tex-cli build <template> <data.json>."
+        ));
+    }
+
+    let templates = list_templates(&cfg.paths.templates_dir)?;
+    if templates.is_empty() {
+        return Err(anyhow::Error::new(TexError::TemplatesDirMissing {
+            templates_dir: cfg.paths.templates_dir.clone(),
+        }));
+    }
+
+    let names: Vec<String> = templates.iter().map(|t| t.name.clone()).collect();
+    let template_name = prompt_template_name(&names)?;
+    let data_source = prompt_json_source()?;
+    let keep_tex = confirm_keep_tex(cfg.compiler.keep_tex)?;
+    let keep_logs = confirm_keep_logs(cfg.compiler.keep_logs)?;
+
+    let args = BuildArgs {
+        template_name: Some(template_name),
+        data_source: Some(data_source),
+        output: None,
+        engine: None,
+        keep_tex,
+        no_keep_tex: !keep_tex,
+        keep_logs,
+        no_keep_logs: !keep_logs,
+        force: false,
+    };
+    handle_build(args)
 }
 
 pub fn handle_compile(args: CompileArgs) -> Result<()> {
