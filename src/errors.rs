@@ -33,9 +33,6 @@ pub enum TexError {
     #[error("Não foi possível resolver o diretório home do usuário.")]
     HomeDirUnavailable,
 
-    #[error("Binário do compilador '{engine}' não foi encontrado no PATH.")]
-    EngineBinaryMissing { engine: String },
-
     #[error("Template '{name}' não existe em {}.", templates_dir.display())]
     TemplateNotFound {
         name: String,
@@ -114,7 +111,6 @@ impl TexError {
             TexError::EngineNotSupported { .. } => 42,
             TexError::Io(_) => 1,
             TexError::HomeDirUnavailable => 1,
-            TexError::EngineBinaryMissing { .. } => 1,
         }
     }
 }
