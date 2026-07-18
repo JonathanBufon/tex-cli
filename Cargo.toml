@@ -3,7 +3,7 @@ name = "tex-cli"
 version = "0.1.0"
 edition = "2021"
 description = "cli tool to compile and export tex files to PDF"
-license-file = "LICENSE"
+license = "MIT OR Apache-2.0"
 repository = "https://github.com/JonathanBufon/tex-cli"
 
 [lib]

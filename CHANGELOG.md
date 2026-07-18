@@ -14,6 +14,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub issue and pull-request templates under `.github/`.
 - GitHub Actions CI running `fmt --check`, `clippy -D warnings`, and
   the full test suite.
+- Dual license under **MIT OR Apache-2.0**, matching the Rust
+  ecosystem convention. Apache-2.0 adds an explicit patent grant that
+  MIT alone did not provide.
+
+### Changed
+
+- Renamed `LICENSE` to `LICENSE-MIT` and added `LICENSE-APACHE`.
+- `Cargo.toml`: replaced `license-file = "LICENSE"` with
+  `license = "MIT OR Apache-2.0"` (SPDX expression).
 
 ## [0.1.0] — 2026-07-18
 
