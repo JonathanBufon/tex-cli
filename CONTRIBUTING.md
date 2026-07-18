@@ -9,6 +9,7 @@ use to ship changes.
 ## Table of contents
 
 - [Ways to contribute](#ways-to-contribute)
+- [Learn Rust before contributing](#learn-rust-before-contributing)
 - [Development environment](#development-environment)
 - [Running tests](#running-tests)
 - [Code style](#code-style)
@@ -26,6 +27,35 @@ use to ship changes.
   README are always welcome and don't need prior discussion.
 - **Templates**: contributions to `examples/templates/` are appreciated —
   they help new users see what the tool can do.
+
+## Learn Rust before contributing
+
+Code contributions to `tex-cli` assume a working knowledge of Rust. If
+you are new to the language, please read
+**[The Rust Programming Language](https://doc.rust-lang.org/stable/book/)**
+(a.k.a. "the Rust book") before opening a code PR. It's free, official,
+and covers everything you need to work in this codebase.
+
+The chapters most relevant to `tex-cli` are:
+
+- **Chapters 1-9** — syntax, ownership, structs, enums, and pattern
+  matching. Foundational for reading any file in `src/`.
+- **Chapter 9 (Error Handling)** — this project relies on `Result<T, E>`
+  and a custom `TexError` enum with structured exit codes. Understanding
+  `?`, `From` conversions, and `thiserror` is essential.
+- **Chapter 11 (Testing)** — all changes ship with tests. We use
+  `#[test]`, `assert_cmd`, and `assert_fs` extensively.
+- **Chapter 17 (Fearless Concurrency)** — not currently used in the
+  runtime code, but useful context for RAII patterns like `TempDir`.
+
+You do not need to be an expert — reviewers are happy to explain
+idiomatic patterns during review. But please do not open a PR asking
+what a `Result` or a lifetime is; those are covered in the book, and
+answering them line-by-line in review is not a good use of anyone's
+time.
+
+Non-code contributions (docs, templates, bug reports, feature
+requests) do not require Rust knowledge.
 
 ## Development environment
 
