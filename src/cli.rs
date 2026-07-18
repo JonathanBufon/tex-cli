@@ -22,7 +22,7 @@ use crate::templates::{
 #[derive(Debug, Parser)]
 #[command(
     name = "tex-cli",
-    about = "cli tool to compile and export tex files to PDF",
+    about = "Convert JSON data into LaTeX documents and compile them to PDF.",
     version
 )]
 pub struct Cli {
@@ -31,7 +31,7 @@ pub struct Cli {
         long = "verbose",
         action = clap::ArgAction::Count,
         global = true,
-        help = "Aumenta o nível de log em stderr (repetível: -v, -vv, -vvv)."
+        help = "Increase log verbosity on stderr (repeatable: -v, -vv, -vvv)."
     )]
     pub verbose: u8,
 
@@ -41,116 +41,116 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
-    /// Cria o config em ~/.config/tex/config.toml (interativo ou via flags).
+    /// Create the config at ~/.config/tex/config.toml (interactive or via flags).
     Init(InitArgs),
 
-    /// Inspeciona ou altera o config atual.
+    /// Inspect or update the current config.
     #[command(subcommand)]
     Config(ConfigCmd),
 
-    /// Gerencia templates LaTeX em `paths.templates_dir`.
+    /// Manage LaTeX templates in `paths.templates_dir`.
     Templates(TemplatesArgs),
 
-    /// Renderiza um template com dados JSON, produzindo um `.tex`.
+    /// Render a template with JSON data, producing a `.tex`.
     Render(RenderArgs),
 
-    /// Compila um `.tex` para PDF usando o engine configurado.
+    /// Compile a `.tex` to PDF using the configured engine.
     Compile(CompileArgs),
 
-    /// Pipeline JSON → PDF: renderiza template + compila em uma invocação.
+    /// JSON → PDF pipeline: render template + compile in one invocation.
     Build(BuildArgs),
 }
 
 #[derive(Debug, clap::Args)]
 pub struct BuildArgs {
-    /// Nome do template (com ou sem `.tex`). Ausente → modo interativo.
+    /// Template name (with or without `.tex`). Absent → interactive mode.
     pub template_name: Option<String>,
 
-    /// Path do JSON no host OU `-` para stdin. Ausente → modo interativo.
+    /// Path to JSON on host OR `-` for stdin. Absent → interactive mode.
     pub data_source: Option<String>,
 
-    /// Caminho custom do PDF final. Default: `paths.output_dir/<template>.pdf`.
+    /// Custom path for the final PDF. Default: `paths.output_dir/<template>.pdf`.
     #[arg(short = 'o', long)]
     pub output: Option<std::path::PathBuf>,
 
-    /// Engine LaTeX (`tectonic`, `latexmk`, `pdflatex`, `xelatex`, `lualatex`).
-    /// Sobrescreve `compiler.engine` do config só nesta invocação.
+    /// LaTeX engine (`tectonic`, `latexmk`, `pdflatex`, `xelatex`, `lualatex`).
+    /// Overrides `compiler.engine` from config for this invocation only.
     #[arg(short = 'e', long)]
     pub engine: Option<String>,
 
-    /// Copia o `.tex` intermediário para `output_dir` ANTES do compile.
+    /// Copy the intermediate `.tex` to `output_dir` BEFORE compile.
     #[arg(long, conflicts_with = "no_keep_tex")]
     pub keep_tex: bool,
 
-    /// Descarta o `.tex` intermediário mesmo se config diz true.
+    /// Discard the intermediate `.tex` even if config says true.
     #[arg(long = "no-keep-tex", conflicts_with = "keep_tex")]
     pub no_keep_tex: bool,
 
-    /// Copia o `.log` do engine para `output_dir` após compile.
+    /// Copy the engine's `.log` to `output_dir` after compile.
     #[arg(long, conflicts_with = "no_keep_logs")]
     pub keep_logs: bool,
 
-    /// Descarta o `.log` mesmo se config diz true.
+    /// Discard the `.log` even if config says true.
     #[arg(long = "no-keep-logs", conflicts_with = "keep_logs")]
     pub no_keep_logs: bool,
 
-    /// Sobrescreve PDF existente sem pedir confirmação.
+    /// Overwrite an existing PDF without confirming.
     #[arg(long)]
     pub force: bool,
 }
 
 #[derive(Debug, clap::Args)]
 pub struct CompileArgs {
-    /// Path do arquivo `.tex` a compilar. Ausente → modo interativo.
+    /// Path to the `.tex` file to compile. Absent → interactive mode.
     pub tex_file: Option<std::path::PathBuf>,
 
-    /// Caminho custom do PDF final. Default: `paths.output_dir/<basename>.pdf`.
+    /// Custom path for the final PDF. Default: `paths.output_dir/<basename>.pdf`.
     #[arg(short = 'o', long)]
     pub output: Option<std::path::PathBuf>,
 
-    /// Engine LaTeX (`tectonic`, `latexmk`, `pdflatex`, `xelatex`, `lualatex`).
-    /// Sobrescreve `compiler.engine` do config só nesta invocação.
+    /// LaTeX engine (`tectonic`, `latexmk`, `pdflatex`, `xelatex`, `lualatex`).
+    /// Overrides `compiler.engine` from config for this invocation only.
     #[arg(short = 'e', long)]
     pub engine: Option<String>,
 
-    /// Copia o `.tex` fonte para `output_dir` ao final.
+    /// Copy the source `.tex` to `output_dir` at the end.
     #[arg(long, conflicts_with = "no_keep_tex")]
     pub keep_tex: bool,
 
-    /// Não copia o `.tex` (sobrescreve `compiler.keep_tex=true` do config).
+    /// Do not copy the `.tex` (overrides `compiler.keep_tex=true` from config).
     #[arg(long = "no-keep-tex", conflicts_with = "keep_tex")]
     pub no_keep_tex: bool,
 
-    /// Copia o `.log` do engine para `output_dir` ao final.
+    /// Copy the engine's `.log` to `output_dir` at the end.
     #[arg(long, conflicts_with = "no_keep_logs")]
     pub keep_logs: bool,
 
-    /// Não copia o `.log` (sobrescreve `compiler.keep_logs=true` do config).
+    /// Do not copy the `.log` (overrides `compiler.keep_logs=true` from config).
     #[arg(long = "no-keep-logs", conflicts_with = "keep_logs")]
     pub no_keep_logs: bool,
 
-    /// Sobrescreve PDF existente sem pedir confirmação.
+    /// Overwrite an existing PDF without confirming.
     #[arg(long)]
     pub force: bool,
 }
 
 #[derive(Debug, clap::Args)]
 pub struct RenderArgs {
-    /// Nome do template (com ou sem `.tex`). Opcional para modo interativo.
+    /// Template name (with or without `.tex`). Optional for interactive mode.
     pub template_name: Option<String>,
 
-    /// Path do arquivo JSON no host OU `-` para ler de stdin. Opcional para modo interativo.
+    /// Path to the JSON file on host OR `-` to read from stdin. Optional for interactive mode.
     pub data_source: Option<String>,
 
-    /// Caminho custom do `.tex` final. Default: `paths.output_dir/<template>.tex`.
+    /// Custom path for the final `.tex`. Default: `paths.output_dir/<template>.tex`.
     #[arg(short = 'o', long)]
     pub output: Option<std::path::PathBuf>,
 
-    /// Imprime o renderizado em stdout, não grava arquivo. Ignora `--output`.
+    /// Print the rendered output to stdout instead of writing a file. Ignores `--output`.
     #[arg(long)]
     pub dry_run: bool,
 
-    /// Sobrescreve arquivo existente sem pedir confirmação.
+    /// Overwrite an existing file without confirming.
     #[arg(long)]
     pub force: bool,
 }
@@ -163,19 +163,19 @@ pub struct TemplatesArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum TemplatesCmd {
-    /// Lista os arquivos `.tex` em `paths.templates_dir`.
+    /// List the `.tex` files in `paths.templates_dir`.
     List {
-        #[arg(long, default_value = "humano")]
+        #[arg(long, default_value = "human")]
         format: ShowFormat,
     },
 
-    /// Imprime o conteúdo bruto de um template no stdout.
+    /// Print the raw content of a template to stdout.
     Show { name: String },
 
-    /// Adiciona um novo template copiando um arquivo do host.
+    /// Add a new template by copying a file from the host.
     Add(AddTemplateArgs),
 
-    /// Remove um template do `paths.templates_dir`.
+    /// Remove a template from `paths.templates_dir`.
     Remove {
         name: String,
         #[arg(long)]
@@ -185,56 +185,56 @@ pub enum TemplatesCmd {
 
 #[derive(Debug, clap::Args)]
 pub struct AddTemplateArgs {
-    /// Caminho do arquivo `.tex` no host.
+    /// Path to the `.tex` file on the host.
     pub source_path: std::path::PathBuf,
 
-    /// Nome final do template (default = basename do arquivo, sem `.tex`).
+    /// Final template name (default = file basename without `.tex`).
     #[arg(short = 'n', long)]
     pub name: Option<String>,
 
-    /// Sobrescreve template existente sem pedir confirmação.
+    /// Overwrite an existing template without confirming.
     #[arg(long)]
     pub force: bool,
 }
 
 #[derive(Debug, clap::Args)]
 pub struct InitArgs {
-    /// Diretório de templates LaTeX (pula o prompt correspondente).
+    /// LaTeX templates directory (skips the corresponding prompt).
     #[arg(short = 't', long)]
     pub templates_dir: Option<String>,
 
-    /// Diretório padrão de saída dos PDFs (pula o prompt correspondente).
+    /// Default output directory for PDFs (skips the corresponding prompt).
     #[arg(short = 'o', long)]
     pub output_dir: Option<String>,
 
-    /// Nome do engine LaTeX (`tectonic`, `latexmk`, `pdflatex`, `xelatex`, `lualatex`).
+    /// Name of the LaTeX engine (`tectonic`, `latexmk`, `pdflatex`, `xelatex`, `lualatex`).
     #[arg(short = 'e', long)]
     pub engine: Option<String>,
 
-    /// Cria diretórios ausentes sem pedir confirmação.
+    /// Create missing directories without confirming.
     #[arg(long)]
     pub create_dirs: bool,
 
-    /// Sobrescreve config existente sem pedir confirmação.
+    /// Overwrite an existing config without confirming.
     #[arg(long)]
     pub force: bool,
 }
 
 #[derive(Debug, Subcommand)]
 pub enum ConfigCmd {
-    /// Exibe o config atual (humano/json/toml).
+    /// Show the current config (human/json/toml).
     Show {
-        #[arg(long, default_value = "humano")]
+        #[arg(long, default_value = "human")]
         format: ShowFormat,
     },
 
-    /// Altera um único valor no config (`<chave-dotted> <valor>`).
+    /// Change a single value in the config (`<dotted-key> <value>`).
     Set { key: String, value: String },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum ShowFormat {
-    Humano,
+    Human,
     Json,
     Toml,
 }
@@ -263,7 +263,7 @@ pub fn handle_init(args: InitArgs) -> Result<()> {
     let cfg = Config::new_from_prompts(templates_dir, output_dir, engine);
     cfg.save_atomic(&config_path)?;
 
-    println!("Config gravado em: {}", config_path.display());
+    println!("Config written to: {}", config_path.display());
     Ok(())
 }
 
@@ -301,12 +301,12 @@ fn ensure_dir(path: &std::path::Path, create_flag: bool) -> Result<()> {
 fn check_engine(engine: &str) {
     if which::which(engine).is_err() {
         eprintln!(
-            "Aviso: '{engine}' não foi encontrado no PATH. A preferência foi salva, instale o binário depois."
+            "Warning: '{engine}' was not found on PATH. Preference saved; install the binary later."
         );
     }
     if engine != "tectonic" {
         eprintln!(
-            "Aviso: engine '{engine}' ainda não é executada pelo Tex nesta versão. A preferência foi salva."
+            "Warning: engine '{engine}' is not yet executed by Tex in this version. Preference saved."
         );
     }
 }
@@ -316,14 +316,14 @@ pub fn handle_config_show(format: ShowFormat) -> Result<()> {
     let cfg = Config::load(&path)?;
 
     let rendered = match format {
-        ShowFormat::Humano => render_humano(&cfg),
+        ShowFormat::Human => render_humano(&cfg),
         ShowFormat::Json => {
             serde_json::to_string_pretty(&cfg)
-                .map_err(|e| anyhow!("falha ao serializar JSON: {e}"))?
+                .map_err(|e| anyhow!("failed to serialize JSON: {e}"))?
                 + "\n"
         }
         ShowFormat::Toml => {
-            toml::to_string_pretty(&cfg).map_err(|e| anyhow!("falha ao serializar TOML: {e}"))?
+            toml::to_string_pretty(&cfg).map_err(|e| anyhow!("failed to serialize TOML: {e}"))?
         }
     };
 
@@ -338,7 +338,7 @@ pub fn handle_templates_list(format: ShowFormat) -> Result<()> {
     let templates = list_templates(dir)?;
 
     match format {
-        ShowFormat::Humano => {
+        ShowFormat::Human => {
             print!("{}", render_template_list_humano(dir, &templates));
         }
         ShowFormat::Json => {
@@ -346,7 +346,7 @@ pub fn handle_templates_list(format: ShowFormat) -> Result<()> {
         }
         ShowFormat::Toml => {
             return Err(anyhow!(
-                "--format=toml não é suportado em templates list. Use humano ou json."
+                "--format=toml is not supported for templates list. Use human or json."
             ));
         }
     }
@@ -376,7 +376,7 @@ pub fn handle_templates_add(args: AddTemplateArgs) -> Result<()> {
             .source_path
             .file_stem()
             .and_then(|s| s.to_str())
-            .ok_or_else(|| anyhow!("caminho do arquivo fonte inválido"))?
+            .ok_or_else(|| anyhow!("invalid source file path"))?
             .to_string(),
     };
     let dest_path = dir.join(format!("{dest_name}.tex"));
@@ -403,12 +403,12 @@ pub fn handle_templates_add(args: AddTemplateArgs) -> Result<()> {
     )?;
 
     let verb = if outcome.overwrote_existing {
-        "sobrescrito"
+        "overwritten"
     } else {
-        "adicionado"
+        "added"
     };
     println!(
-        "Template '{}' {} em {}.",
+        "Template '{}' {} at {}.",
         outcome.name,
         verb,
         outcome.path.display()
@@ -431,7 +431,7 @@ pub fn handle_templates_remove(name: String, force: bool) -> Result<()> {
     } else if std::io::stdin().is_terminal() {
         confirm_remove_template(&name)?
     } else {
-        eprintln!("Template '{name}' não removido: use --force ou execute em terminal interativo.");
+        eprintln!("Template '{name}' not removed: use --force or run in an interactive terminal.");
         false
     };
 
@@ -440,7 +440,7 @@ pub fn handle_templates_remove(name: String, force: bool) -> Result<()> {
     }
 
     let removed_path = remove_template(dir, &name, true)?;
-    println!("Template '{name}' removido de {}.", removed_path.display());
+    println!("Template '{name}' removed from {}.", removed_path.display());
     Ok(())
 }
 
@@ -482,7 +482,7 @@ pub fn handle_build(args: BuildArgs) -> Result<()> {
             confirm_compile_overwrite(&output_pdf)?
         } else {
             eprintln!(
-                "Arquivo {} já existe. Use --force ou execute em terminal interativo.",
+                "File {} already exists. Use --force or run in an interactive terminal.",
                 output_pdf.display()
             );
             false
@@ -507,13 +507,13 @@ pub fn handle_build(args: BuildArgs) -> Result<()> {
     let secs = outcome.total_duration.as_secs_f32();
     if outcome.overwrote_existing {
         println!(
-            "PDF gerado (sobrescrito) em {}. Pipeline (render + compile) levou {:.1}s.",
+            "PDF generated (overwritten) at {}. Pipeline (render + compile) took {:.1}s.",
             outcome.pdf_path.display(),
             secs
         );
     } else {
         println!(
-            "PDF gerado em {}. Pipeline (render + compile) levou {:.1}s.",
+            "PDF generated at {}. Pipeline (render + compile) took {:.1}s.",
             outcome.pdf_path.display(),
             secs
         );
@@ -526,7 +526,7 @@ fn handle_build_menu(cfg: &Config) -> Result<()> {
 
     if !std::io::stdin().is_terminal() {
         return Err(anyhow!(
-            "Menu interativo de build requer terminal. Use tex-cli build <template> <data.json>."
+            "Interactive build menu requires a terminal. Use tex-cli build <template> <data.json>."
         ));
     }
 
@@ -578,7 +578,7 @@ pub fn handle_compile(args: CompileArgs) -> Result<()> {
             let basename = tex_path
                 .file_stem()
                 .and_then(|s| s.to_str())
-                .ok_or_else(|| anyhow!("caminho do .tex fonte inválido"))?;
+                .ok_or_else(|| anyhow!("invalid source .tex path"))?;
             cfg.paths.output_dir.join(format!("{basename}.pdf"))
         }
     };
@@ -604,7 +604,7 @@ pub fn handle_compile(args: CompileArgs) -> Result<()> {
             confirm_compile_overwrite(&output_pdf)?
         } else {
             eprintln!(
-                "Arquivo {} já existe. Use --force ou execute em terminal interativo.",
+                "File {} already exists. Use --force or run in an interactive terminal.",
                 output_pdf.display()
             );
             false
@@ -633,13 +633,13 @@ fn print_compile_outcome(outcome: &crate::compiler::CompileOutcome) {
     let secs = outcome.duration.as_secs_f32();
     if outcome.overwrote_existing {
         println!(
-            "PDF gerado (sobrescrito) em {}. Compilação levou {:.1}s.",
+            "PDF generated (overwritten) at {}. Compile took {:.1}s.",
             outcome.pdf_path.display(),
             secs
         );
     } else {
         println!(
-            "PDF gerado em {}. Compilação levou {:.1}s.",
+            "PDF generated at {}. Compile took {:.1}s.",
             outcome.pdf_path.display(),
             secs
         );
@@ -651,7 +651,7 @@ fn handle_compile_menu(cfg: &Config) -> Result<()> {
 
     if !std::io::stdin().is_terminal() {
         return Err(anyhow!(
-            "Menu interativo de compile requer terminal. Use tex-cli compile <tex-file>."
+            "Interactive compile menu requires a terminal. Use tex-cli compile <tex-file>."
         ));
     }
 
@@ -666,7 +666,7 @@ fn handle_compile_menu(cfg: &Config) -> Result<()> {
     let basename = tex_path
         .file_stem()
         .and_then(|s| s.to_str())
-        .ok_or_else(|| anyhow!("caminho do .tex fonte inválido"))?;
+        .ok_or_else(|| anyhow!("invalid source .tex path"))?;
     let output_pdf = cfg.paths.output_dir.join(format!("{basename}.pdf"));
 
     if output_pdf.exists() && !confirm_compile_overwrite(&output_pdf)? {
@@ -699,7 +699,7 @@ pub fn handle_render(args: RenderArgs) -> Result<()> {
         };
 
     if dry_run && output.is_some() {
-        tracing::warn!("--output ignorado porque --dry-run está ativo");
+        tracing::warn!("--output ignored because --dry-run is active");
     }
 
     let expanded_output = match output.as_deref() {
@@ -735,9 +735,9 @@ fn render_and_print(
         .as_ref()
         .expect("output_path is Some when dry_run is false");
     if outcome.overwrote_existing {
-        println!("Renderizado (sobrescrito) em {}.", path.display());
+        println!(".tex written (overwritten) to {}.", path.display());
     } else {
-        println!("Renderizado em {}.", path.display());
+        println!(".tex written to {}.", path.display());
     }
     Ok(())
 }
@@ -747,7 +747,7 @@ fn handle_render_menu(cfg: &Config) -> Result<()> {
 
     if !std::io::stdin().is_terminal() {
         return Err(anyhow!(
-            "Menu interativo de render requer terminal. Use tex-cli render <template> <data.json>."
+            "Interactive render menu requires a terminal. Use tex-cli render <template> <data.json>."
         ));
     }
 
@@ -771,7 +771,7 @@ pub fn handle_templates_menu() -> Result<()> {
 
     if !std::io::stdin().is_terminal() {
         return Err(anyhow!(
-            "Menu interativo de templates requer terminal. Use um subcomando explícito: tex-cli templates list|show|add|remove."
+            "Interactive templates menu requires a terminal. Use an explicit subcommand: tex-cli templates list|show|add|remove."
         ));
     }
 
@@ -780,7 +780,7 @@ pub fn handle_templates_menu() -> Result<()> {
     let dir = cfg.paths.templates_dir.clone();
 
     match template_menu()? {
-        TemplateMenuAction::List => handle_templates_list(ShowFormat::Humano),
+        TemplateMenuAction::List => handle_templates_list(ShowFormat::Human),
         TemplateMenuAction::Show => {
             let templates = list_templates(&dir)?;
             let names: Vec<String> = templates.iter().map(|t| t.name.clone()).collect();
@@ -819,7 +819,7 @@ pub fn handle_config_set(key: String, value: String) -> Result<()> {
     cfg.save_atomic(&path)?;
 
     println!(
-        "Config atualizado: {} = {}",
+        "Config updated: {} = {}",
         change.key, change.normalized_value
     );
     Ok(())
