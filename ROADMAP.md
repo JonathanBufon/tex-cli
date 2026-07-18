@@ -34,8 +34,9 @@ sequence.
 
 ### Release hygiene
 
-- [ ] Tag **`v0.1.0`** — `CHANGELOG.md` references it but the repo has
-      no matching ref. `git tag -a v0.1.0 -m "…" <sha>` and push.
+- [x] ~~Tag **`v0.1.0`**~~ — done 2026-07-18. Annotated tag at
+      `d53839a` (last commit of spec 005), GitHub Release published:
+      <https://github.com/JonathanBufon/tex-cli/releases/tag/v0.1.0>.
 - [ ] Add a **versioning policy** section to `CONTRIBUTING.md` (or a
       `SEMVER.md`) making the stability contract above explicit.
 - [ ] Publish the crate to **crates.io** once — validates that
@@ -132,5 +133,6 @@ build these to reach 1.0.
 
 - **2026-07-18** — Roadmap created. All spec 001-005 shipped; docs
   ready for external contributors (CONTRIBUTING, CoC, SECURITY,
-  CHANGELOG, PR/issue templates, CI, dual license). `v0.1.0` still
-  untagged.
+  CHANGELOG, PR/issue templates, CI, dual license).
+- **2026-07-18** — `v0.1.0` tagged at `d53839a` and published as a
+  GitHub Release.
