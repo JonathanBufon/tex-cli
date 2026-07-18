@@ -22,10 +22,7 @@ pub fn render_template(
     if !json_value.is_object() {
         return Err(TexError::InvalidJson {
             source_name: format!("template {template_name}"),
-            detail: format!(
-                "expected top-level object, got {}",
-                type_name(json_value)
-            ),
+            detail: format!("expected top-level object, got {}", type_name(json_value)),
         });
     }
 

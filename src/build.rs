@@ -99,10 +99,7 @@ pub fn build_pipeline(
         verbose,
     )?;
     let compile_duration = start_compile.elapsed();
-    tracing::info!(
-        "Compile finished in {:.2}s",
-        compile_duration.as_secs_f32()
-    );
+    tracing::info!("Compile finished in {:.2}s", compile_duration.as_secs_f32());
 
     Ok(BuildOutcome {
         pdf_path: output_pdf.to_path_buf(),

@@ -7,15 +7,10 @@ pub enum TexError {
     #[error("No config found. Run 'tex-cli init' first.")]
     ConfigMissing,
 
-    #[error(
-        "Config at {path} is invalid: {detail}. Run 'tex-cli init' again to recreate."
-    )]
+    #[error("Config at {path} is invalid: {detail}. Run 'tex-cli init' again to recreate.")]
     ConfigCorrupted { path: PathBuf, detail: String },
 
-    #[error(
-        "Unknown key: '{key}'. Accepted keys:\n{}",
-        format_accepted(accepted)
-    )]
+    #[error("Unknown key: '{key}'. Accepted keys:\n{}", format_accepted(accepted))]
     UnknownKey {
         key: String,
         accepted: Vec<&'static str>,

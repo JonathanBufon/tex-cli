@@ -142,9 +142,7 @@ fn build_stdout_mentions_path_and_total_duration() {
         .success()
         .stdout(
             predicate::str::contains("PDF generated at")
-                .and(predicate::str::contains(
-                    "Pipeline (render + compile) took",
-                ))
+                .and(predicate::str::contains("Pipeline (render + compile) took"))
                 .and(predicate::str::contains("s.")),
         );
 }
