@@ -41,7 +41,7 @@ strictly easier for a translation refactor.
 **Purpose**: Confirm the branch baseline is clean before any
 translation begins.
 
-- [ ] T001 Confirm baseline is green by running
+- [x] T001 Confirm baseline is green by running
   `docker run --rm -v $(pwd):/src -w /src tex-cli cargo test --all`
   on the current `006-translate-to-english` branch. Expected: **~197
   tests pass, zero regressions vs. `main`**. If any test fails
@@ -70,7 +70,7 @@ Portuguese to English, one file per task, per the style guide in
 [research.md § D-03](./research.md) and the string-by-string
 mapping in [contracts/cli.md](./contracts/cli.md).
 
-- [ ] T002 [US2] Translate every `#[error("...")]` message in
+- [x] T002 [US2] Translate every `#[error("...")]` message in
   `src/errors.rs` (14 `TexError` variants) per
   [contracts/cli.md § 1](./contracts/cli.md#1-texerror-display-messages-srcerrorsrs).
   In the same file, update the inline `#[cfg(test)] mod tests`
@@ -83,7 +83,7 @@ mapping in [contracts/cli.md](./contracts/cli.md).
   40, 41, 42, 1`). Run `cargo test --lib` in Docker; must be green
   before moving on. **Satisfies FR-001, FR-008, FR-010, FR-011.**
 
-- [ ] T003 [US1] [US4] Translate every `///` doc comment in
+- [x] T003 [US1] [US4] Translate every `///` doc comment in
   `src/cli.rs` per
   [contracts/cli.md § 2](./contracts/cli.md#2---help-doc-comments-srclirs) —
   top-level `Cli`, every subcommand descriptor, every arg-struct
@@ -97,20 +97,20 @@ mapping in [contracts/cli.md](./contracts/cli.md).
   Run `cargo build --release` in Docker to confirm the file
   compiles. **Satisfies FR-002, FR-004, FR-005, FR-006, FR-007.**
 
-- [ ] T004 [P] [US3] Translate every `inquire::{Select,Text,Confirm}`
+- [x] T004 [P] [US3] Translate every `inquire::{Select,Text,Confirm}`
   prompt string in `src/interactive.rs` per
   [contracts/cli.md § 4](./contracts/cli.md#4-interactive-prompts-srcinteractiveresponsers)
   (16 prompts). Preserve interpolation positions (`{}` for `path`,
   `name`, etc.). Run `cargo build` to confirm. **Satisfies FR-003.**
 
-- [ ] T005 [P] Translate the stderr diagnostic message in
+- [x] T005 [P] Translate the stderr diagnostic message in
   `src/compiler.rs` at line ~167
   (`"Engine retornou sucesso mas nenhum PDF foi produzido."`) to
   its English equivalent per
   [contracts/cli.md § 6](./contracts/cli.md#6-stderr-diagnostics-srccompilerrs).
   Run `cargo build` to confirm. **Satisfies FR-009.**
 
-- [ ] T006 [P] Sweep `src/build.rs` and `src/render.rs` for any
+- [x] T006 [P] Sweep `src/build.rs` and `src/render.rs` for any
   remaining user-facing Portuguese in `println!`/`eprintln!`/error
   format strings that were not caught by T003. Any hit is
   translated in-place per the style guide in
@@ -134,7 +134,7 @@ token in `assert!(...)` or `predicates::str::contains(...)`. Task
 per test file; all fully parallelizable because each touches a
 distinct file.
 
-- [ ] T007 [P] [US2] Update `tests/cli_build.rs`: replace every
+- [x] T007 [P] [US2] Update `tests/cli_build.rs`: replace every
   `assert!(msg.contains("<PT-token>"))` and every
   `predicate::str::contains("<PT-token>")` referencing tokens from
   [contracts/cli.md § 1](./contracts/cli.md#1-texerror-display-messages-srcerrorsrs)
@@ -142,45 +142,45 @@ distinct file.
   English equivalent. Preserve exit-code assertions unchanged. Run
   `cargo test --test cli_build` in Docker; green before merging.
 
-- [ ] T008 [P] [US2] Update `tests/cli_compile.rs` assertions per
+- [x] T008 [P] [US2] Update `tests/cli_compile.rs` assertions per
   the same procedure as T007. Focus areas: `Compile failed` +
   `Engine not supported` + `Compile took` + PDF path shape.
   Run `cargo test --test cli_compile` in Docker; green.
 
-- [ ] T009 [P] [US2] Update `tests/cli_config_set.rs` assertions
+- [x] T009 [P] [US2] Update `tests/cli_config_set.rs` assertions
   (unknown key list, invalid bool value error). Run
   `cargo test --test cli_config_set`; green.
 
-- [ ] T010 [P] [US4] Update `tests/cli_config_show.rs`: (a) any
+- [x] T010 [P] [US4] Update `tests/cli_config_show.rs`: (a) any
   existing assertion that referenced the `humano` default output
   now expects the `human` header, (b) any test named or asserting
   around the `humano` string value is either renamed or moved to
   the humano-rejection test in T016. Run
   `cargo test --test cli_config_show`; green.
 
-- [ ] T011 [P] [US3] Update `tests/cli_init.rs`: any regex
+- [x] T011 [P] [US3] Update `tests/cli_init.rs`: any regex
   assertion that pinned a Portuguese word from the interactive
   init flow (`Diretório`, `Compilador`, `Sobrescrever`) is
   replaced with the English token from
   [contracts/cli.md § 4](./contracts/cli.md#4-interactive-prompts-srcinteractiveresponsers).
   Run `cargo test --test cli_init`; green.
 
-- [ ] T012 [P] [US2] Update `tests/cli_render.rs` assertions
+- [x] T012 [P] [US2] Update `tests/cli_render.rs` assertions
   (tera error message, invalid JSON message). Run
   `cargo test --test cli_render`; green.
 
-- [ ] T013 [P] [US2] Update `tests/cli_templates_add.rs`
+- [x] T013 [P] [US2] Update `tests/cli_templates_add.rs`
   assertions (invalid UTF-8, overwrite prompt). Run
   `cargo test --test cli_templates_add`; green.
 
-- [ ] T014 [P] [US4] Update `tests/cli_templates_list.rs`: (a)
+- [x] T014 [P] [US4] Update `tests/cli_templates_list.rs`: (a)
   `--format humano` test is either renamed to the humano-rejection
   case in T016 or moved there, (b) any header/label PT strings in
   the human-format output are updated, (c) `--format json` tests
   stay unchanged. Run `cargo test --test cli_templates_list`;
   green.
 
-- [ ] T015 [P] [US2] Update `tests/cli_templates_remove.rs` and
+- [x] T015 [P] [US2] Update `tests/cli_templates_remove.rs` and
   `tests/cli_templates_show.rs` assertions (remove-confirm prompt,
   template-not-found error). Run
   `cargo test --test cli_templates_remove --test cli_templates_show`;
@@ -195,7 +195,7 @@ distinct file.
 
 **Purpose**: Add tests for behaviors introduced by this feature.
 
-- [ ] T016 [US4] Add a new integration test asserting **`--format
+- [x] T016 [US4] Add a new integration test asserting **`--format
   humano` is rejected**: run `tex-cli templates list --format humano`
   and `tex-cli config show --format humano`, assert both exit with
   code **2** (clap parse error), assert stderr contains the string
@@ -204,7 +204,7 @@ distinct file.
   `tests/cli_humano_rejected.rs`. Verifies D-01 decision and
   **satisfies FR-015, SC-005.**
 
-- [ ] T017 [US1] Add a new integration test capturing the output
+- [x] T017 [US1] Add a new integration test capturing the output
   of `--help` and asserting absence of every word in a curated
   Portuguese denylist. Place in a new file
   `tests/cli_help_english.rs`. Denylist entries (minimum):
@@ -226,7 +226,7 @@ distinct file.
 copy-paste examples and quoted output blocks in `README.md` remain
 accurate.
 
-- [ ] T018 Update `README.md` sections that quote actual command
+- [x] T018 Update `README.md` sections that quote actual command
   output per [research.md § D-06](./research.md#d-06-readme-updates-in-sync):
   (a) the `compile` "Important contracts" section's stdout example
   now reads `PDF generated at <path>. Compile took X.Ys.`,
@@ -236,7 +236,7 @@ accurate.
   `renderizar` quotes replaced with their English equivalents.
   Also verify no lingering `humano` mentions in README.
 
-- [ ] T019 Add a `[Unreleased] > Changed` entry to `CHANGELOG.md`
+- [x] T019 Add a `[Unreleased] > Changed` entry to `CHANGELOG.md`
   with the **`BREAKING:`** prefix per
   [research.md § D-07](./research.md#d-07-changelog-classification).
   Two bullets: (1) user-visible strings translated PT → EN
@@ -253,7 +253,7 @@ docs done.
 
 **Purpose**: Full-suite gate before opening the PR.
 
-- [ ] T020 **Full verification** in the Docker container:
+- [x] T020 **Full verification** in the Docker container:
   1. `cargo fmt --all -- --check` — clean.
   2. `cargo clippy --all-targets --all-features -- -D warnings` —
      clean.
