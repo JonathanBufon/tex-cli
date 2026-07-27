@@ -43,7 +43,7 @@ fn show_cmd(home: &TempDir) -> Command {
 }
 
 #[test]
-fn show_humano_prints_all_sections() {
+fn show_human_prints_all_sections() {
     let home = TempDir::new().unwrap();
     write_valid_config(&home);
 
@@ -107,7 +107,7 @@ fn show_corrupted_config_exits_11() {
         .assert()
         .failure()
         .code(11)
-        .stderr(predicate::str::contains("inválido"));
+        .stderr(predicate::str::contains("invalid"));
 }
 
 #[test]

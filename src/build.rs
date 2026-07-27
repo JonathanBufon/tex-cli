@@ -66,7 +66,7 @@ pub fn build_pipeline(
     let start_render = Instant::now();
     let rendered = render::render_template(template_name, template_src, &value)?;
     let render_duration = start_render.elapsed();
-    tracing::info!("Render concluído em {}ms", render_duration.as_millis());
+    tracing::info!("Render finished in {}ms", render_duration.as_millis());
 
     // 7. If keep_tex, write intermediate .tex to output_dir BEFORE compile
     // so a compile failure preserves it for debugging (FR-15).
@@ -87,7 +87,7 @@ pub fn build_pipeline(
     // 11-13. Compile. Pass keep_tex=false because we already handled
     // the .tex ourselves in step 7 (research D-06).
     let start_compile = Instant::now();
-    tracing::info!("Compilando com engine '{engine}'...");
+    tracing::info!("Compiling with engine '{engine}'...");
     let compile_outcome = compiler::compile_and_write(
         cfg,
         &tex_in_temp,
@@ -99,10 +99,7 @@ pub fn build_pipeline(
         verbose,
     )?;
     let compile_duration = start_compile.elapsed();
-    tracing::info!(
-        "Compile concluído em {:.2}s",
-        compile_duration.as_secs_f32()
-    );
+    tracing::info!("Compile finished in {:.2}s", compile_duration.as_secs_f32());
 
     Ok(BuildOutcome {
         pdf_path: output_pdf.to_path_buf(),

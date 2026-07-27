@@ -36,6 +36,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed `LICENSE` to `LICENSE-MIT` and added `LICENSE-APACHE`.
 - `Cargo.toml`: replaced `license-file = "LICENSE"` with
   `license = "MIT OR Apache-2.0"` (SPDX expression).
+- **BREAKING**: All user-visible strings translated from Portuguese to
+  English. This affects `--help` output, `TexError` messages,
+  interactive prompts, stdout success messages, and stderr diagnostics.
+  Scripts that grep stdout or stderr for specific Portuguese tokens
+  must be updated. Exit codes are unchanged; structural output shape
+  (path position, duration position) is unchanged. See
+  [`specs/006-translate-to-english/`](specs/006-translate-to-english/)
+  for the full contract mapping.
+- **BREAKING**: The `--format` flag default value renamed from `humano`
+  to `human` on `templates list` and `config show`. Passing
+  `--format humano` now fails with a clap parse error (exit code 2).
 
 ## [0.1.0] — 2026-07-18
 

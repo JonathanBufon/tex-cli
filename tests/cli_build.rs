@@ -141,10 +141,8 @@ fn build_stdout_mentions_path_and_total_duration() {
         .assert()
         .success()
         .stdout(
-            predicate::str::contains("PDF gerado em")
-                .and(predicate::str::contains(
-                    "Pipeline (render + compile) levou",
-                ))
+            predicate::str::contains("PDF generated at")
+                .and(predicate::str::contains("Pipeline (render + compile) took"))
                 .and(predicate::str::contains("s.")),
         );
 }
@@ -198,7 +196,7 @@ fn build_malformed_json_exits_31() {
         .assert()
         .failure()
         .code(31)
-        .stderr(predicate::str::contains("JSON inválido"));
+        .stderr(predicate::str::contains("Invalid JSON"));
 }
 
 #[test]
@@ -249,7 +247,7 @@ fn build_broken_tex_after_render_exits_40_with_log_tail() {
         .failure()
         .code(40)
         .stderr(
-            predicate::str::contains("Falha ao compilar").and(predicate::str::contains("broken")),
+            predicate::str::contains("Failed to compile").and(predicate::str::contains("broken")),
         );
 
     assert!(
@@ -307,7 +305,7 @@ fn build_force_overwrites_existing_pdf() {
         .args(["artigo", data.to_str().unwrap(), "--force"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("sobrescrito"));
+        .stdout(predicate::str::contains("overwritten"));
 
     let bytes = std::fs::read(&pdf).unwrap();
     assert!(bytes.starts_with(b"%PDF-"));
@@ -594,7 +592,7 @@ fn build_engine_not_supported_exits_42() {
         .failure()
         .code(42)
         .stderr(
-            predicate::str::contains("Engine 'foo' não é suportado")
+            predicate::str::contains("Engine 'foo' is not supported")
                 .and(predicate::str::contains("tectonic")),
         );
 
@@ -621,7 +619,7 @@ fn build_engine_not_installed_exits_41() {
         .failure()
         .code(41)
         .stderr(predicate::str::contains(
-            "Engine 'tectonic' não está instalado no PATH",
+            "Engine 'tectonic' is not installed on PATH",
         ));
 }
 

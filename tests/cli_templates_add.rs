@@ -145,7 +145,7 @@ fn add_force_overwrites_existing() {
         .args(["--name", "x", "--force"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("sobrescrito"));
+        .stdout(predicate::str::contains("overwritten"));
 
     assert_eq!(std::fs::read(templates.join("x.tex")).unwrap(), b"new\n");
 }

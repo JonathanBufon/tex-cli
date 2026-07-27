@@ -22,10 +22,7 @@ pub fn render_template(
     if !json_value.is_object() {
         return Err(TexError::InvalidJson {
             source_name: format!("template {template_name}"),
-            detail: format!(
-                "esperado objeto no topo, recebido {}",
-                type_name(json_value)
-            ),
+            detail: format!("expected top-level object, got {}", type_name(json_value)),
         });
     }
 
@@ -80,7 +77,7 @@ pub fn load_json_source(source: &str) -> Result<serde_json::Value, TexError> {
     if content.trim().is_empty() {
         return Err(TexError::InvalidJson {
             source_name: source_display,
-            detail: "sem conteúdo".to_string(),
+            detail: "empty content".to_string(),
         });
     }
 
@@ -199,7 +196,7 @@ mod tests {
         let err = render_template("test", "x", &json!(["a"])).unwrap_err();
         match err {
             TexError::InvalidJson { detail, .. } => {
-                assert!(detail.contains("array") || detail.contains("objeto"));
+                assert!(detail.contains("array") || detail.contains("object"));
             }
             other => panic!("expected InvalidJson, got {other:?}"),
         }

@@ -81,7 +81,7 @@ fn show_missing_template_exits_20() {
         .assert()
         .failure()
         .code(20)
-        .stderr(predicate::str::contains("parecer").and(predicate::str::contains("não existe")));
+        .stderr(predicate::str::contains("parecer").and(predicate::str::contains("not found")));
 }
 
 #[test]

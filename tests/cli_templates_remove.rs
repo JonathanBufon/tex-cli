@@ -66,7 +66,7 @@ fn remove_with_force_deletes_file() {
         .arg("--force")
         .assert()
         .success()
-        .stdout(predicate::str::contains("removido"));
+        .stdout(predicate::str::contains("removed"));
 
     assert!(!templates.join("carta.tex").exists());
 }
@@ -83,7 +83,7 @@ fn remove_nonexistent_exits_20() {
         .assert()
         .failure()
         .code(20)
-        .stderr(predicate::str::contains("nada").and(predicate::str::contains("não existe")));
+        .stderr(predicate::str::contains("nada").and(predicate::str::contains("not found")));
 }
 
 #[test]

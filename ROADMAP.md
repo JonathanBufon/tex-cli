@@ -57,18 +57,14 @@ sequence.
 
 ### Internationalization decision
 
-- [ ] Decide the i18n stance for stdout/stderr strings currently
-      hardcoded in Portuguese (`PDF gerado em …`, `Pipeline (render +
-      compile) levou X.Ys.`, `Compilação levou X.Ys.`). Three viable
-      options:
-  - **English-only** — translate the strings, keep it simple.
-  - **PT + EN via `LANG`/`LC_MESSAGES`** — locale detection, two
-    string tables.
-  - **Full i18n** via `fluent` or similar — over-engineered for a
-    single binary; defer.
-- [ ] Whichever option wins, ship it **before 1.0**. Changing user-
-      visible strings after 1.0 is a breaking change for anyone
-      grepping stdout in a script.
+- [x] ~~Decide the i18n stance~~ — done 2026-07-18. English-only,
+      no i18n framework, no locale detection. Documented in
+      [`specs/006-translate-to-english/`](specs/006-translate-to-english/).
+- [x] ~~Ship translation before 1.0~~ — done 2026-07-18 via spec 006.
+      Every `TexError` variant, every `///` doc comment, every
+      `inquire` prompt, every stdout success message, and the
+      `--format` default value are now English. `--format humano`
+      is hard-rejected with exit 2.
 
 ### Real-world validation
 
@@ -138,3 +134,8 @@ build these to reach 1.0.
   CHANGELOG, PR/issue templates, CI, dual license).
 - **2026-07-18** — `v0.1.0` tagged at `d53839a` and published as a
   GitHub Release.
+- **2026-07-18** — `SEMVER.md` shipped (versioning policy blocker).
+- **2026-07-18** — Dead `EngineBinaryMissing` variant removed
+  (pre-1.0 API audit fix).
+- **2026-07-18** — Spec 006 implemented: full PT → EN translation of
+  every user-visible string; i18n decision blocker closed.

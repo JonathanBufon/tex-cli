@@ -49,7 +49,7 @@ fn seed_templates(dir: &Path, names: &[&str]) {
 }
 
 #[test]
-fn list_humano_shows_three_templates() {
+fn list_human_shows_three_templates() {
     let home = TempDir::new().unwrap();
     let templates = home.path().join("t");
     seed_templates(&templates, &["artigo.tex", "carta.tex", "relatorio.tex"]);
@@ -58,9 +58,9 @@ fn list_humano_shows_three_templates() {
     let assert = list_cmd(&home).assert().success();
     let out = assert.get_output();
     let stdout = String::from_utf8_lossy(&out.stdout);
-    assert!(stdout.contains("NOME"));
-    assert!(stdout.contains("TAMANHO"));
-    assert!(stdout.contains("MODIFICADO"));
+    assert!(stdout.contains("NAME"));
+    assert!(stdout.contains("SIZE"));
+    assert!(stdout.contains("MODIFIED"));
     assert!(stdout.contains("artigo"));
     assert!(stdout.contains("carta"));
     assert!(stdout.contains("relatorio"));
@@ -134,7 +134,7 @@ fn list_empty_dir_prints_message_and_exits_0() {
     list_cmd(&home)
         .assert()
         .success()
-        .stdout(predicate::str::contains("Nenhum template encontrado"));
+        .stdout(predicate::str::contains("No templates found"));
 }
 
 #[test]
