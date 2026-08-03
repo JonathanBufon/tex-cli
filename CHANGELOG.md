@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-08-03
+
 ### Added — spec 007 (auto PDF pipeline)
 
 - **`tex-cli build --json <path>`** — one-command JSON → PDF pipeline.
