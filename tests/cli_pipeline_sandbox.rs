@@ -112,10 +112,8 @@ fn write18_in_installed_template_is_blocked() {
     }
     // Sentinel path is unique to this test run so parallel/repeat runs
     // never cross-contaminate.
-    let sentinel = std::env::temp_dir().join(format!(
-        "tex_cli_sandbox_test_pwned_{}",
-        std::process::id()
-    ));
+    let sentinel =
+        std::env::temp_dir().join(format!("tex_cli_sandbox_test_pwned_{}", std::process::id()));
     let _ = std::fs::remove_file(&sentinel);
 
     let home = TempDir::new().unwrap();
