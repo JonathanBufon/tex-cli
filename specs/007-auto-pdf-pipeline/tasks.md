@@ -24,8 +24,8 @@ Single-crate Rust CLI. Source lives under `src/`, tests under `tests/` at the re
 
 **Purpose**: Land the empty module boundaries so subsequent tasks can `use` them without breaking `cargo build`.
 
-- [ ] T001 Declare new modules (`install`, `trust`, `discovery`) as `pub mod` entries in `src/lib.rs`
-- [ ] T002 [P] Add empty error-enum stubs (`InstallError`, `TrustError`, `ManifestError`, `ResolveError`, `SandboxError`, `DiscoveryError`) marked `#[derive(Debug, thiserror::Error)]` in `src/errors.rs`
+- [X] T001 Declare new modules (`install`, `trust`, `discovery`) as `pub mod` entries in `src/lib.rs`
+- [X] T002 [P] ~~Add empty error-enum stubs~~ **Adapted**: existing codebase uses a single `TexError` enum with grouped exit-code ranges (10-49). New variants will land inside `TexError` in T006, preserving convention. No stub file needed.
 
 **Checkpoint**: `cargo build` passes with empty new modules; no user story work has started.
 
