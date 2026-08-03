@@ -51,6 +51,10 @@ pub enum Commands {
     /// Manage LaTeX templates in `paths.templates_dir`.
     Templates(TemplatesArgs),
 
+    /// Spec 007: manage third-party (installable) templates.
+    #[command(subcommand)]
+    Template(TemplateCmd),
+
     /// Render a template with JSON data, producing a `.tex`.
     Render(RenderArgs),
 
@@ -97,6 +101,12 @@ pub struct BuildArgs {
     /// Overwrite an existing PDF without confirming.
     #[arg(long)]
     pub force: bool,
+
+    /// Spec 007 US1: resolve the template from the JSON's `document.type`
+    /// or `document.template` field. Mutually exclusive with the positional
+    /// `template_name`. Value is a path to a JSON file, or `-` for stdin.
+    #[arg(long = "json", conflicts_with = "template_name")]
+    pub json: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]
@@ -197,6 +207,51 @@ pub struct AddTemplateArgs {
     pub force: bool,
 }
 
+/// Spec 007 subcommand tree — third-party templates.
+///
+/// See `specs/007-auto-pdf-pipeline/contracts/cli-template-subcommands.md`.
+#[derive(Debug, Subcommand)]
+pub enum TemplateCmd {
+    /// Install a third-party template from a Git URL or local filesystem path.
+    Install {
+        /// Git URL (contains `://` or `.git` suffix) or local path.
+        source: String,
+        /// Overwrite an existing `identifier@version` install.
+        #[arg(long)]
+        force: bool,
+    },
+    /// List every installed third-party template.
+    List {
+        /// Emit structured JSON to stdout for scripting.
+        #[arg(long)]
+        json: bool,
+        /// Include built-in library templates in the listing.
+        #[arg(long)]
+        include_builtin: bool,
+    },
+    /// Uninstall an installed third-party template by identifier
+    /// (`namespace/name`) and drop its trust records.
+    Remove {
+        /// Full identifier — `namespace/name`.
+        identifier: String,
+        /// Skip the interactive confirmation.
+        #[arg(long)]
+        yes: bool,
+    },
+    /// Manage trust records without going through a compile.
+    Trust {
+        /// Full identifier — `namespace/name`.
+        identifier: String,
+        /// Restrict grant/revoke to this specific version. Absent → all
+        /// installed versions of that identifier.
+        #[arg(long)]
+        version: Option<String>,
+        /// Revoke instead of grant.
+        #[arg(long)]
+        revoke: bool,
+    },
+}
+
 #[derive(Debug, clap::Args)]
 pub struct InitArgs {
     /// LaTeX templates directory (skips the corresponding prompt).
@@ -264,7 +319,71 @@ pub fn handle_init(args: InitArgs) -> Result<()> {
     cfg.save_atomic(&config_path)?;
 
     println!("Config written to: {}", config_path.display());
+
+    // Spec 007 T040 / research R1 cross-cutting: warm the Tectonic bundle
+    // cache after init so subsequent third-party-template compiles (which
+    // run with --only-cached under the FR-017 sandbox) succeed without a
+    // separate priming step. Only meaningful for the tectonic engine.
+    if cfg.compiler.engine == "tectonic" {
+        warm_tectonic_bundle_cache();
+    }
     Ok(())
+}
+
+/// Spec 007 T040: run a minimal no-op compile against an embedded fixture
+/// to populate Tectonic's bundle cache. Emits progress on stderr but never
+/// fails init — an unavailable tectonic just prints an informational note.
+fn warm_tectonic_bundle_cache() {
+    // Minimal well-formed LaTeX — no non-ASCII, no fancy packages, so the
+    // fixture stays stable across LaTeX distributions and Tectonic versions.
+    const INIT_FIXTURE_TEX: &str =
+        "\\documentclass{article}\n\\begin{document}\nInit OK.\n\\end{document}\n";
+
+    if which::which("tectonic").is_err() {
+        eprintln!(
+            "note: tectonic not on PATH — bundle cache not warmed. \
+             Third-party template compiles will surface \
+             SandboxBundleMissing until this is fixed."
+        );
+        return;
+    }
+
+    let tmp = match tempfile::TempDir::new() {
+        Ok(t) => t,
+        Err(e) => {
+            eprintln!("note: could not create tempdir for cache warm-up: {e}");
+            return;
+        }
+    };
+    let tex_path = tmp.path().join("init.tex");
+    if let Err(e) = std::fs::write(&tex_path, INIT_FIXTURE_TEX) {
+        eprintln!("note: could not write cache warm-up fixture: {e}");
+        return;
+    }
+
+    eprintln!("Warming Tectonic bundle cache (one-time; may take ~30s)...");
+    let status = std::process::Command::new("tectonic")
+        .arg(&tex_path)
+        .current_dir(tmp.path())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status();
+
+    match status {
+        Ok(s) if s.success() => {
+            eprintln!("Tectonic bundle cache warmed.");
+        }
+        Ok(s) => {
+            eprintln!(
+                "note: cache warm-up compile returned exit {}. Third-party \
+                 template compiles may still work if the cache was already primed.",
+                s.code().unwrap_or(-1)
+            );
+        }
+        Err(e) => {
+            eprintln!("note: could not run tectonic for cache warm-up: {e}");
+        }
+    }
 }
 
 fn resolve_answers(args: &InitArgs) -> Result<(std::path::PathBuf, std::path::PathBuf, String)> {
@@ -448,6 +567,20 @@ pub fn handle_build(args: BuildArgs) -> Result<()> {
     use std::io::IsTerminal;
 
     let path = config_file_path()?;
+
+    // Spec 007 US1 + US4 route: `--json <source>`. When no config exists
+    // (FR-007), silently bootstrap a default one at the canonical location
+    // and continue — the user should never need a separate `init` step
+    // just to compile a JSON.
+    if let Some(json_source) = args.json.as_deref() {
+        let cfg = match Config::load(&path) {
+            Ok(c) => c,
+            Err(TexError::ConfigMissing) => bootstrap_default_config(&path)?,
+            Err(other) => return Err(anyhow::Error::new(other)),
+        };
+        return handle_build_from_json(&cfg, &args, json_source);
+    }
+
     let cfg = Config::load(&path)?;
 
     let (template_name, data_source) = match (&args.template_name, &args.data_source) {
@@ -521,7 +654,119 @@ pub fn handle_build(args: BuildArgs) -> Result<()> {
     Ok(())
 }
 
+/// Spec 007 T039 / FR-007: create the default config at `path`, ensure
+/// its templates_dir exists, and print where it was written so the user
+/// knows for future runs.
+fn bootstrap_default_config(path: &std::path::Path) -> Result<Config> {
+    let cfg = Config::default_bootstrap()?;
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    // Best-effort: create the templates_dir so the pipeline can enumerate
+    // built-ins even in a completely bare environment.
+    std::fs::create_dir_all(&cfg.paths.templates_dir).ok();
+    cfg.save_atomic(path)?;
+    eprintln!(
+        "note: no config found — created default at {}",
+        path.display()
+    );
+    eprintln!("      templates_dir: {}", cfg.paths.templates_dir.display());
+    eprintln!(
+        "      output_dir:    {} (current working directory)",
+        cfg.paths.output_dir.display()
+    );
+    eprintln!("      engine:        {}", cfg.compiler.engine);
+    Ok(cfg)
+}
+
+/// Spec 007 US1 (T012–T014): `tex-cli build --json <source>` — resolve
+/// the template from the JSON's `document.type` / `document.template`
+/// then delegate to the standard build pipeline.
+fn handle_build_from_json(cfg: &Config, args: &BuildArgs, json_source: &str) -> Result<()> {
+    use std::io::IsTerminal;
+
+    let engine = crate::compiler::resolve_engine(args.engine.as_deref(), &cfg.compiler.engine)?;
+
+    let keep_tex = if args.keep_tex {
+        true
+    } else if args.no_keep_tex {
+        false
+    } else {
+        cfg.compiler.keep_tex
+    };
+    let keep_logs = if args.keep_logs {
+        true
+    } else if args.no_keep_logs {
+        false
+    } else {
+        cfg.compiler.keep_logs
+    };
+
+    let output_override = args
+        .output
+        .as_ref()
+        .map(|p| crate::paths::expand_user_path(&p.display().to_string()))
+        .transpose()?;
+
+    // For the overwrite guard we need the resolved output path — but that
+    // depends on which template the resolver picks. Peek by resolving here
+    // first is expensive (loads JSON + enumerates templates twice). Simpler:
+    // let the pipeline resolve, then check overwrite only if a caller-provided
+    // --output was set (which is the only case we can pre-check without
+    // knowing the template name).
+    if let Some(target) = output_override.as_deref() {
+        if target.exists() && !args.force {
+            let confirmed = if std::io::stdin().is_terminal() {
+                confirm_compile_overwrite(target)?
+            } else {
+                eprintln!(
+                    "File {} already exists. Use --force or run in an interactive terminal.",
+                    target.display()
+                );
+                false
+            };
+            if !confirmed {
+                return Err(anyhow::Error::new(TexError::UserAborted));
+            }
+        }
+    }
+
+    let outcome = crate::build::build_pipeline_from_json(
+        cfg,
+        json_source,
+        output_override.as_deref(),
+        engine,
+        keep_tex,
+        keep_logs,
+        args.force,
+        0,
+    )?;
+
+    let secs = outcome.total_duration.as_secs_f32();
+    let template_desc = match &outcome.template_version {
+        Some(ver) => format!("{}@{}", outcome.template_identifier, ver),
+        None => outcome.template_identifier.to_string(),
+    };
+    if outcome.overwrote_existing {
+        println!(
+            "PDF generated (overwritten) at {}. Template: {}. Pipeline (render + compile) took {:.1}s.",
+            outcome.pdf_path.display(),
+            template_desc,
+            secs
+        );
+    } else {
+        println!(
+            "PDF generated at {}. Template: {}. Pipeline (render + compile) took {:.1}s.",
+            outcome.pdf_path.display(),
+            template_desc,
+            secs
+        );
+    }
+    Ok(())
+}
+
 fn handle_build_menu(cfg: &Config) -> Result<()> {
+    use inquire::Select;
     use std::io::IsTerminal;
 
     if !std::io::stdin().is_terminal() {
@@ -530,6 +775,46 @@ fn handle_build_menu(cfg: &Config) -> Result<()> {
         ));
     }
 
+    // Spec 007 T015 (Constitution III): the "JSON → resolve → PDF" flow
+    // is offered on equal footing with the explicit template+JSON flow.
+    let mode = Select::new(
+        "How do you want to build?",
+        vec![
+            "Compile a JSON to PDF (auto-resolve template from document.type)",
+            "Pick a template and JSON explicitly",
+        ],
+    )
+    .with_starting_cursor(0)
+    .prompt()
+    .map_err(|e| {
+        anyhow::Error::new(match e {
+            inquire::InquireError::OperationCanceled
+            | inquire::InquireError::OperationInterrupted => TexError::UserAborted,
+            other => TexError::Io(std::io::Error::other(other.to_string())),
+        })
+    })?;
+
+    if mode.starts_with("Compile a JSON to PDF") {
+        let json_source = prompt_json_source()?;
+        let keep_tex = confirm_keep_tex(cfg.compiler.keep_tex)?;
+        let keep_logs = confirm_keep_logs(cfg.compiler.keep_logs)?;
+
+        let args = BuildArgs {
+            template_name: None,
+            data_source: None,
+            output: None,
+            engine: None,
+            keep_tex,
+            no_keep_tex: !keep_tex,
+            keep_logs,
+            no_keep_logs: !keep_logs,
+            force: false,
+            json: Some(json_source),
+        };
+        return handle_build(args);
+    }
+
+    // Explicit path (unchanged pre-007 behaviour).
     let templates = list_templates(&cfg.paths.templates_dir)?;
     if templates.is_empty() {
         return Err(anyhow::Error::new(TexError::TemplatesDirMissing {
@@ -553,6 +838,7 @@ fn handle_build_menu(cfg: &Config) -> Result<()> {
         keep_logs,
         no_keep_logs: !keep_logs,
         force: false,
+        json: None,
     };
     handle_build(args)
 }
@@ -802,6 +1088,24 @@ pub fn handle_templates_menu() -> Result<()> {
             let chosen = prompt_template_name(&names)?;
             handle_templates_remove(chosen, false)
         }
+        // Spec 007 T033 — third-party template flows.
+        TemplateMenuAction::InstallThirdParty => {
+            let source = crate::interactive::prompt_template_install_source()?;
+            handle_template_install(source, false)
+        }
+        TemplateMenuAction::ListInstalled => handle_template_list(false, false),
+        TemplateMenuAction::RemoveInstalled => {
+            let id = crate::interactive::prompt_template_identifier(
+                "Identifier to remove (namespace/name):",
+            )?;
+            handle_template_remove(id, false)
+        }
+        TemplateMenuAction::ManageTrust => {
+            let id = crate::interactive::prompt_template_identifier(
+                "Identifier to (re)grant trust for (namespace/name):",
+            )?;
+            handle_template_trust(id, None, false)
+        }
         TemplateMenuAction::Quit => Ok(()),
     }
 }
@@ -822,5 +1126,239 @@ pub fn handle_config_set(key: String, value: String) -> Result<()> {
         "Config updated: {} = {}",
         change.key, change.normalized_value
     );
+    Ok(())
+}
+
+// ===================================================================
+// Spec 007 T029-T032: `tex-cli template <install|list|remove|trust>`
+// ===================================================================
+
+pub fn handle_template_install(source: String, force: bool) -> Result<()> {
+    let templates_root = crate::paths::templates_dir()?;
+
+    let installed = if crate::install::looks_like_git_url(&source) {
+        crate::install::install_from_git(&source, &templates_root, force)?
+    } else {
+        let path = crate::paths::expand_user_path(&source)?;
+        crate::install::install_from_local_path(&path, &templates_root, force)?
+    };
+
+    println!(
+        "installed {}@{} at {}",
+        installed.identifier,
+        installed.version,
+        installed.dest_dir.display()
+    );
+    Ok(())
+}
+
+pub fn handle_template_list(json: bool, include_builtin: bool) -> Result<()> {
+    let templates_root = crate::paths::templates_dir()?;
+    let trust_path = crate::paths::trust_file()?;
+    let installed = crate::install::list_installed(&templates_root);
+
+    if json {
+        let items: Vec<serde_json::Value> = installed
+            .iter()
+            .map(|p| {
+                serde_json::json!({
+                    "identifier": p.identifier.to_string(),
+                    "version":    p.version.to_string(),
+                    "path":       p.dest_dir.display().to_string(),
+                    "trusted":    crate::trust::is_trusted(&trust_path, &p.identifier, &p.version),
+                    "kind":       "installed",
+                })
+            })
+            .collect();
+        let mut all = items;
+        if include_builtin {
+            let cfg_path = config_file_path()?;
+            let cfg = Config::load(&cfg_path)?;
+            let builtins = crate::templates::list_builtin_identifiers(&cfg.paths.templates_dir)?;
+            for id in builtins {
+                all.push(serde_json::json!({
+                    "identifier": id.to_string(),
+                    "kind":       "builtin",
+                }));
+            }
+        }
+        println!("{}", serde_json::to_string_pretty(&all)?);
+        return Ok(());
+    }
+
+    if installed.is_empty() && !include_builtin {
+        println!("No installed third-party templates.");
+        println!("Install one with: tex-cli template install <git-url|path>");
+        return Ok(());
+    }
+
+    println!("IDENTIFIER                    VERSION   TRUSTED   PATH");
+    for p in &installed {
+        let trusted = crate::trust::is_trusted(&trust_path, &p.identifier, &p.version);
+        println!(
+            "{:<30}{:<10}{:<10}{}",
+            p.identifier,
+            p.version,
+            if trusted { "yes" } else { "no" },
+            p.dest_dir.display()
+        );
+    }
+
+    if include_builtin {
+        let cfg_path = config_file_path()?;
+        let cfg = Config::load(&cfg_path)?;
+        let builtins = crate::templates::list_builtin_identifiers(&cfg.paths.templates_dir)?;
+        if !builtins.is_empty() {
+            println!();
+            println!("Built-in library:");
+            for id in builtins {
+                println!("  {id}");
+            }
+        }
+    }
+    Ok(())
+}
+
+pub fn handle_template_remove(identifier: String, yes: bool) -> Result<()> {
+    use std::io::IsTerminal;
+
+    let id: crate::discovery::Identifier =
+        identifier
+            .parse()
+            .map_err(|_| TexError::ManifestInvalidIdentifier {
+                value: identifier.clone(),
+            })?;
+    if !id.is_third_party() {
+        return Err(anyhow::Error::new(TexError::ManifestInvalidIdentifier {
+            value: identifier,
+        }));
+    }
+    let templates_root = crate::paths::templates_dir()?;
+
+    if !yes {
+        if !std::io::stdin().is_terminal() {
+            eprintln!("Refusing to remove '{id}' without --yes in a non-interactive context.");
+            return Err(anyhow::Error::new(TexError::UserAborted));
+        }
+        let confirmed = inquire::Confirm::new(&format!(
+            "Remove installed template '{id}' and drop its trust records?"
+        ))
+        .with_default(false)
+        .prompt()
+        .map_err(|e| {
+            anyhow::Error::new(match e {
+                inquire::InquireError::OperationCanceled
+                | inquire::InquireError::OperationInterrupted => TexError::UserAborted,
+                other => TexError::Io(std::io::Error::other(other.to_string())),
+            })
+        })?;
+        if !confirmed {
+            return Err(anyhow::Error::new(TexError::UserAborted));
+        }
+    }
+
+    crate::install::uninstall(&id, &templates_root)?;
+
+    // Drop trust records so a later re-install prompts again.
+    let trust_path = crate::paths::trust_file()?;
+    let mut trust_file = crate::trust::TrustFile::load(&trust_path)?;
+    trust_file.revoke_all(&id);
+    trust_file.save(&trust_path)?;
+
+    println!("removed {id}");
+    Ok(())
+}
+
+pub fn handle_template_trust(
+    identifier: String,
+    version: Option<String>,
+    revoke: bool,
+) -> Result<()> {
+    use std::io::IsTerminal;
+
+    let id: crate::discovery::Identifier =
+        identifier
+            .parse()
+            .map_err(|_| TexError::ManifestInvalidIdentifier {
+                value: identifier.clone(),
+            })?;
+    if !id.is_third_party() {
+        return Err(anyhow::Error::new(TexError::ManifestInvalidIdentifier {
+            value: identifier,
+        }));
+    }
+    let templates_root = crate::paths::templates_dir()?;
+    let trust_path = crate::paths::trust_file()?;
+
+    // Enumerate installed versions of this identifier.
+    let installed: Vec<_> = crate::install::list_installed(&templates_root)
+        .into_iter()
+        .filter(|p| p.identifier == id)
+        .collect();
+    if installed.is_empty() {
+        return Err(anyhow::Error::new(TexError::ExplicitTemplateMissing {
+            requested: id.to_string(),
+        }));
+    }
+
+    let target_versions: Vec<crate::templates::Version> = match &version {
+        Some(v_raw) => {
+            let v: crate::templates::Version =
+                v_raw
+                    .parse()
+                    .map_err(|_| TexError::ManifestInvalidVersion {
+                        value: v_raw.clone(),
+                    })?;
+            vec![v]
+        }
+        None => installed.iter().map(|p| p.version.clone()).collect(),
+    };
+
+    let mut trust_file = crate::trust::TrustFile::load(&trust_path)?;
+
+    if revoke {
+        for v in &target_versions {
+            trust_file.revoke_version(&id, v);
+        }
+        trust_file.save(&trust_path)?;
+        println!("revoked {} version(s) for {id}", target_versions.len());
+        return Ok(());
+    }
+
+    // Grant flow — prompt unless already trusted, then persist.
+    let mut granted = 0;
+    for v in &target_versions {
+        if trust_file.is_trusted(&id, v) {
+            continue;
+        }
+        if !std::io::stdin().is_terminal() {
+            eprintln!(
+                "Refusing to trust {id}@{v} without a TTY. \
+                 Grant approval interactively or set --version explicitly in a TTY."
+            );
+            return Err(anyhow::Error::new(TexError::TrustDenied {
+                identifier: id.to_string(),
+                version: v.to_string(),
+            }));
+        }
+        let approved = inquire::Confirm::new(&format!(
+            "Trust {id}@{v}? (compiles run inside the spec-007 sandbox)"
+        ))
+        .with_default(false)
+        .prompt()
+        .map_err(|e| {
+            anyhow::Error::new(match e {
+                inquire::InquireError::OperationCanceled
+                | inquire::InquireError::OperationInterrupted => TexError::UserAborted,
+                other => TexError::Io(std::io::Error::other(other.to_string())),
+            })
+        })?;
+        if approved {
+            trust_file.grant(&id, v);
+            granted += 1;
+        }
+    }
+    trust_file.save(&trust_path)?;
+    println!("granted trust for {granted} version(s) of {id}");
     Ok(())
 }

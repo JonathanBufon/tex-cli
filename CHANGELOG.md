@@ -7,7 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+### Added — spec 007 (auto PDF pipeline)
+
+- **`tex-cli build --json <path>`** — one-command JSON → PDF pipeline.
+  Resolves the template from the JSON's `document.type` (matched against
+  built-in library first, then installed) or explicit `document.template`
+  (`namespace/name` for installed, bare name for built-in). Prints
+  `Template: <identifier>` on success (FR-010). See
+  [`specs/007-auto-pdf-pipeline/spec.md`](specs/007-auto-pdf-pipeline/spec.md).
+- **`tex-cli template install|list|remove|trust`** — new subcommand
+  tree for third-party installable templates. `install` accepts a Git
+  URL (shelled out to `git`, no new crate) or a local filesystem path.
+  Packages ship a `tex-template.toml` manifest with `identifier`,
+  `version` (semver), and `entrypoint` fields. Layout at
+  `~/.local/share/tex/templates/<namespace>/<name>/`.
+- **Trust model** — installed third-party templates require explicit
+  per-`(identifier, version)` approval before their first compile
+  (FR-016). Approvals persist to `~/.local/share/tex/trust.toml`.
+  Version bumps re-prompt. Non-TTY invocations exit `70`
+  (`TrustDenied`) rather than blocking.
+- **Sandbox** — installed third-party template compiles run with
+  `\write18` disabled, `--only-cached` (no bundle-network fetch), and
+  `openout_any=p` (KPathsea paranoid mode) — FR-017. Built-in
+  templates keep the compiler's default. Sandbox violations map to
+  exit codes `90..=92`.
+- **Zero-config first run** — `build --json` in a bare environment
+  auto-creates the config at `~/.config/tex/config.toml` with sensible
+  defaults (templates_dir under `~/.config/tex/templates`, output_dir
+  = cwd, engine = tectonic) and prints a "note" to stderr. FR-007.
+- **Tectonic bundle-cache warm-up** — `tex-cli init` runs a minimal
+  no-op compile after writing the config so subsequent third-party
+  compiles (which require `--only-cached`) don't need a separate
+  priming step. Skipped when the engine is not tectonic.
+- New exit codes `50..=92` grouped by concern (install, manifest,
+  trust, resolve, sandbox). See the README exit-code table.
+- Extended interactive menu — `template_menu` now surfaces both
+  built-in and third-party actions on equal footing (Constitution III).
+- New value objects `Identifier` (bare or `namespace/name`) and
+  `Version` (semver-lite) — manual char/regex validation, no new deps.
+
+### Changed — spec 007 (BREAKING)
+
+- **Universal LaTeX escaping of JSON string values (FR-005)** — every
+  string in the user JSON is now escaped for the ten LaTeX specials
+  (`\ & % $ # _ { } ~ ^`) before Tera sees it. Em-dash `—` → `---` and
+  en-dash `–` → `--` are substituted with the substitution logged via
+  `tracing::warn!` (A-06). **Migration**: JSON values that previously
+  embedded raw LaTeX (e.g. `"date": "\\today"`) will now render as
+  literal text. Move LaTeX macros into the template body and keep JSON
+  as pure data (Constitution II). The pre-007 test that documented
+  unsafe passthrough (`render_template_no_autoescape_for_latex`) has
+  been replaced with `render_template_escapes_latex_specials_universally`.
+- **Load-time template↔LaTeX collision detection (FR-006)** — templates
+  containing `\macro{#N}` patterns (the canonical `\MakeUppercase{#1}`
+  bug) now fail with a targeted diagnostic naming the macro and line
+  number instead of an opaque Tera parse error.
+- `BuildOutcome` gained `template_identifier: Identifier` and
+  `template_version: Option<Version>` fields (populated by the new
+  `build --json` pipeline; the pre-007 explicit `build TEMPLATE JSON`
+  path fills identifier from the given name and leaves version None).
+
+### Added — pre-spec-007
 
 - Collaboration documentation: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
   `SECURITY.md`, `CHANGELOG.md`.

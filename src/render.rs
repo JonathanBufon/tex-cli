@@ -14,11 +14,37 @@ pub struct RenderOutcome {
     pub dry_run: bool,
 }
 
+/// Spec 007 FR-005 / A-06: one glyph substitution the renderer applied so
+/// the caller can surface it to the user (Constitution V: never silently drop).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CharSubstitution {
+    /// The original glyph in the source JSON string value.
+    pub original: char,
+    /// The LaTeX-safe replacement written to the rendered output.
+    pub replacement: String,
+    /// Dot-path in the JSON where the substitution happened (best-effort;
+    /// empty for the top-level value).
+    pub json_path: String,
+}
+
 pub fn render_template(
     template_name: &str,
     template_src: &str,
     json_value: &serde_json::Value,
 ) -> Result<String, TexError> {
+    let (out, _warnings) = render_template_safe(template_name, template_src, json_value)?;
+    Ok(out)
+}
+
+/// Spec 007 US3 entry point — universally escapes every JSON string value
+/// (FR-005) before feeding tera, detects known template-engine ↔ LaTeX
+/// syntax collisions BEFORE parsing (FR-006), and returns the list of
+/// glyph substitutions performed (A-06) for the caller to surface.
+pub fn render_template_safe(
+    template_name: &str,
+    template_src: &str,
+    json_value: &serde_json::Value,
+) -> Result<(String, Vec<CharSubstitution>), TexError> {
     if !json_value.is_object() {
         return Err(TexError::InvalidJson {
             source_name: format!("template {template_name}"),
@@ -26,15 +52,110 @@ pub fn render_template(
         });
     }
 
-    let ctx = tera::Context::from_value(json_value.clone()).map_err(|e| TexError::InvalidJson {
+    // FR-006: fail fast with a targeted diagnostic on known collisions.
+    crate::templates::check_template_collisions(template_name, template_src)?;
+
+    // FR-005 + A-06: escape/substitute every JSON string value.
+    let mut warnings: Vec<CharSubstitution> = Vec::new();
+    let escaped = escape_value_recursive(json_value.clone(), &mut warnings, String::new());
+    for w in &warnings {
+        tracing::warn!(
+            char = %w.original,
+            replacement = %w.replacement,
+            path = %w.json_path,
+            "substituted unrepresentable glyph in rendered output (spec 007 A-06)"
+        );
+    }
+
+    let ctx = tera::Context::from_value(escaped).map_err(|e| TexError::InvalidJson {
         source_name: format!("template {template_name}"),
         detail: e.to_string(),
     })?;
 
-    tera::Tera::one_off(template_src, &ctx, false).map_err(|e| TexError::TeraRenderError {
-        template_name: template_name.to_string(),
-        detail: friendly_tera_error(&e),
-    })
+    let rendered =
+        tera::Tera::one_off(template_src, &ctx, false).map_err(|e| TexError::TeraRenderError {
+            template_name: template_name.to_string(),
+            detail: friendly_tera_error(&e),
+        })?;
+    Ok((rendered, warnings))
+}
+
+/// FR-005: walk a JSON value and escape every string in-tree, recording
+/// glyph substitutions (A-06) in `warnings`.
+fn escape_value_recursive(
+    v: serde_json::Value,
+    warnings: &mut Vec<CharSubstitution>,
+    path: String,
+) -> serde_json::Value {
+    use serde_json::Value;
+    match v {
+        Value::String(s) => Value::String(escape_latex_string(&s, warnings, &path)),
+        Value::Array(arr) => Value::Array(
+            arr.into_iter()
+                .enumerate()
+                .map(|(i, x)| {
+                    let child = if path.is_empty() {
+                        format!("[{i}]")
+                    } else {
+                        format!("{path}[{i}]")
+                    };
+                    escape_value_recursive(x, warnings, child)
+                })
+                .collect(),
+        ),
+        Value::Object(map) => Value::Object(
+            map.into_iter()
+                .map(|(k, x)| {
+                    let child = if path.is_empty() {
+                        k.clone()
+                    } else {
+                        format!("{path}.{k}")
+                    };
+                    let escaped = escape_value_recursive(x, warnings, child);
+                    (k, escaped)
+                })
+                .collect(),
+        ),
+        other => other,
+    }
+}
+
+/// FR-005: escape the ten LaTeX specials. A-06: substitute em/en-dashes
+/// with LaTeX shorthand and record the substitution.
+fn escape_latex_string(s: &str, warnings: &mut Vec<CharSubstitution>, path: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for ch in s.chars() {
+        match ch {
+            '\\' => out.push_str(r"\textbackslash{}"),
+            '&' => out.push_str(r"\&"),
+            '%' => out.push_str(r"\%"),
+            '$' => out.push_str(r"\$"),
+            '#' => out.push_str(r"\#"),
+            '_' => out.push_str(r"\_"),
+            '{' => out.push_str(r"\{"),
+            '}' => out.push_str(r"\}"),
+            '~' => out.push_str(r"\textasciitilde{}"),
+            '^' => out.push_str(r"\textasciicircum{}"),
+            '—' => {
+                out.push_str("---");
+                warnings.push(CharSubstitution {
+                    original: '—',
+                    replacement: "---".into(),
+                    json_path: path.to_string(),
+                });
+            }
+            '–' => {
+                out.push_str("--");
+                warnings.push(CharSubstitution {
+                    original: '–',
+                    replacement: "--".into(),
+                    json_path: path.to_string(),
+                });
+            }
+            other => out.push(other),
+        }
+    }
+    out
 }
 
 fn friendly_tera_error(e: &tera::Error) -> String {
@@ -185,10 +306,61 @@ mod tests {
         assert_eq!(out, "Z");
     }
 
+    // Spec 007 FR-005 replaces the pre-007 "no-autoescape" contract with a
+    // stronger promise: EVERY LaTeX special in a JSON string value is
+    // escaped by the renderer before Tera sees the value.
     #[test]
-    fn render_template_no_autoescape_for_latex() {
+    fn render_template_escapes_latex_specials_universally() {
         let out = render_template("test", "{{ x }}", &json!({"x":"& % $"})).unwrap();
-        assert_eq!(out, "& % $");
+        assert_eq!(out, r"\& \% \$");
+    }
+
+    #[test]
+    fn render_template_escapes_all_ten_specials() {
+        let out = render_template("test", "{{ x }}", &json!({"x":"& % $ # _ { } \\ ~ ^"})).unwrap();
+        assert_eq!(
+            out,
+            r"\& \% \$ \# \_ \{ \} \textbackslash{} \textasciitilde{} \textasciicircum{}"
+        );
+    }
+
+    #[test]
+    fn render_template_substitutes_em_dash_and_reports() {
+        let (out, warnings) = render_template_safe("test", "{{ x }}", &json!({"x":"a—b"})).unwrap();
+        assert_eq!(out, "a---b");
+        assert_eq!(warnings.len(), 1);
+        assert_eq!(warnings[0].original, '—');
+        assert_eq!(warnings[0].replacement, "---");
+        assert_eq!(warnings[0].json_path, "x");
+    }
+
+    #[test]
+    fn render_template_substitutes_en_dash_and_reports() {
+        let (out, warnings) = render_template_safe("test", "{{ x }}", &json!({"x":"a–b"})).unwrap();
+        assert_eq!(out, "a--b");
+        assert_eq!(warnings.len(), 1);
+        assert_eq!(warnings[0].original, '–');
+        assert_eq!(warnings[0].replacement, "--");
+    }
+
+    #[test]
+    fn render_template_escapes_nested_objects_and_arrays_with_paths() {
+        let (out, warnings) = render_template_safe(
+            "test",
+            "{{ items.0.name }}",
+            &json!({"items":[{"name":"a—b & c"}]}),
+        )
+        .unwrap();
+        assert_eq!(out, r"a---b \& c");
+        assert_eq!(warnings.len(), 1);
+        assert_eq!(warnings[0].json_path, "items[0].name");
+    }
+
+    #[test]
+    fn render_template_no_warnings_when_no_substitutions_needed() {
+        let (_out, warnings) =
+            render_template_safe("test", "{{ x }}", &json!({"x":"just plain ascii"})).unwrap();
+        assert!(warnings.is_empty());
     }
 
     #[test]

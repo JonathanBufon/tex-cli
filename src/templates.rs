@@ -1,9 +1,13 @@
+use std::cmp::Ordering;
+use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::time::UNIX_EPOCH;
 
 use serde::Serialize;
 
+use crate::discovery::Identifier;
 use crate::errors::TexError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -12,6 +16,118 @@ pub struct AddedTemplate {
     pub path: PathBuf,
     pub bytes_written: u64,
     pub overwrote_existing: bool,
+}
+
+/// Semver-lite: MAJOR.MINOR.PATCH with optional `-<pre>` and `+<build>`.
+///
+/// Ordering is numeric on (major, minor, patch); pre/build are recorded
+/// but do not participate in ordering (v1 keeps the comparison simple —
+/// FR-016 only needs equality for the re-prompt-on-upgrade check).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Version {
+    pub major: u32,
+    pub minor: u32,
+    pub patch: u32,
+    pub pre: Option<String>,
+    pub build: Option<String>,
+}
+
+impl Version {
+    pub fn new(major: u32, minor: u32, patch: u32) -> Self {
+        Self {
+            major,
+            minor,
+            patch,
+            pre: None,
+            build: None,
+        }
+    }
+}
+
+impl fmt::Display for Version {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}.{}.{}", self.major, self.minor, self.patch)?;
+        if let Some(pre) = &self.pre {
+            write!(f, "-{pre}")?;
+        }
+        if let Some(build) = &self.build {
+            write!(f, "+{build}")?;
+        }
+        Ok(())
+    }
+}
+
+impl PartialOrd for Version {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Version {
+    fn cmp(&self, other: &Self) -> Ordering {
+        (self.major, self.minor, self.patch).cmp(&(other.major, other.minor, other.patch))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VersionParseError {
+    pub value: String,
+}
+
+impl FromStr for Version {
+    type Err = VersionParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let err = || VersionParseError {
+            value: s.to_string(),
+        };
+
+        // Split build first: "1.2.3-alpha+ci" -> ("1.2.3-alpha", "ci")
+        let (rest, build) = match s.split_once('+') {
+            Some((r, b)) if !b.is_empty() && is_dot_ident(b) => (r, Some(b.to_string())),
+            Some(_) => return Err(err()),
+            None => (s, None),
+        };
+        // Then pre: "1.2.3-alpha" -> ("1.2.3", "alpha")
+        let (core, pre) = match rest.split_once('-') {
+            Some((c, p)) if !p.is_empty() && is_dot_ident(p) => (c, Some(p.to_string())),
+            Some(_) => return Err(err()),
+            None => (rest, None),
+        };
+
+        let mut parts = core.split('.');
+        let major = parts
+            .next()
+            .and_then(|s| s.parse::<u32>().ok())
+            .ok_or(err())?;
+        let minor = parts
+            .next()
+            .and_then(|s| s.parse::<u32>().ok())
+            .ok_or(err())?;
+        let patch = parts
+            .next()
+            .and_then(|s| s.parse::<u32>().ok())
+            .ok_or(err())?;
+        if parts.next().is_some() {
+            return Err(err());
+        }
+        Ok(Self {
+            major,
+            minor,
+            patch,
+            pre,
+            build,
+        })
+    }
+}
+
+/// Validate that a pre/build identifier is a non-empty dot-separated list of
+/// `[A-Za-z0-9-]+` segments (semver-compatible).
+fn is_dot_ident(s: &str) -> bool {
+    !s.is_empty()
+        && s.split('.').all(|seg| {
+            !seg.is_empty() && seg.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+        })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -194,6 +310,192 @@ pub fn remove_template(dir: &Path, name: &str, force: bool) -> Result<PathBuf, T
     Ok(path)
 }
 
+/// Spec 007 FR-006 / SC-004: scan `template_src` for known template-engine ↔
+/// LaTeX macro syntax collisions BEFORE rendering, so the user gets a
+/// targeted diagnostic that names the offending characters instead of an
+/// opaque Tera parse error.
+///
+/// v1 covers the well-documented collision from spec 007 Context:
+/// `\macro{#N}` — the `{#` opens a Tera comment which never closes,
+/// producing a parse error unrelated to the LaTeX macro the author wrote.
+pub fn check_template_collisions(template_name: &str, src: &str) -> Result<(), TexError> {
+    let bytes = src.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        // Find `\<letters>{#` — a LaTeX macro immediately followed by a
+        // Tera comment opener.
+        if bytes[i] == b'\\' && i + 1 < bytes.len() && bytes[i + 1].is_ascii_alphabetic() {
+            let macro_start = i;
+            i += 1;
+            while i < bytes.len() && bytes[i].is_ascii_alphabetic() {
+                i += 1;
+            }
+            if i + 1 < bytes.len() && bytes[i] == b'{' && bytes[i + 1] == b'#' {
+                let (line, col) = line_col_of(src, macro_start);
+                let macro_name = std::str::from_utf8(&bytes[macro_start..i]).unwrap_or("<?>");
+                return Err(TexError::TeraRenderError {
+                    template_name: template_name.to_string(),
+                    detail: format!(
+                        "template↔LaTeX syntax collision at line {line}, col {col}: \
+                         the sequence '{{#' opens a Tera comment but appears inside \
+                         a LaTeX macro argument (`{macro_name}{{#…}}`). Rewrite the \
+                         macro argument (for example, define it as `\\newcommand{{\\{}[1]{{...}}` \
+                         and call it, or move the argument into a variable) so the \
+                         '#' is not adjacent to '{{'.",
+                        macro_name.trim_start_matches('\\')
+                    ),
+                });
+            }
+            continue;
+        }
+        i += 1;
+    }
+    Ok(())
+}
+
+fn line_col_of(src: &str, idx: usize) -> (usize, usize) {
+    let mut line = 1usize;
+    let mut col = 1usize;
+    for (i, ch) in src.char_indices() {
+        if i >= idx {
+            break;
+        }
+        if ch == '\n' {
+            line += 1;
+            col = 1;
+        } else {
+            col += 1;
+        }
+    }
+    (line, col)
+}
+
+/// The manifest file name required at the root of every third-party template
+/// package (spec 007 FR-019 / contracts/manifest-schema.md).
+pub const MANIFEST_FILE: &str = "tex-template.toml";
+
+/// Loaded, validated `tex-template.toml` (spec 007 FR-019).
+///
+/// Access `identifier`, `version`, and the absolute path to the `.tex`
+/// entrypoint after successful load.
+#[derive(Debug, Clone)]
+pub struct Manifest {
+    pub identifier: Identifier,
+    pub version: Version,
+    /// Relative to the package root — validated to remain within it.
+    pub entrypoint: PathBuf,
+    /// Absolute path resolved against `package_root`.
+    pub entrypoint_abs: PathBuf,
+}
+
+impl Manifest {
+    /// Load and fully validate `<package_root>/tex-template.toml`.
+    pub fn load(package_root: &Path) -> Result<Self, TexError> {
+        let manifest_path = package_root.join(MANIFEST_FILE);
+        if !manifest_path.exists() {
+            return Err(TexError::ManifestNotFound {
+                path: manifest_path,
+            });
+        }
+        let raw = fs::read_to_string(&manifest_path).map_err(TexError::Io)?;
+        let table: toml::Table = toml::from_str(&raw).map_err(|e| TexError::ManifestParse {
+            path: manifest_path.clone(),
+            detail: e.to_string(),
+        })?;
+
+        let identifier_raw = require_str(&table, "identifier", &manifest_path)?;
+        let version_raw = require_str(&table, "version", &manifest_path)?;
+        let entrypoint_raw = require_str(&table, "entrypoint", &manifest_path)?;
+
+        let identifier: Identifier =
+            identifier_raw
+                .parse()
+                .map_err(|_| TexError::ManifestInvalidIdentifier {
+                    value: identifier_raw.clone(),
+                })?;
+        // Third-party manifests MUST declare a namespace (FR-018/FR-019).
+        if !identifier.is_third_party() {
+            return Err(TexError::ManifestInvalidIdentifier {
+                value: identifier_raw,
+            });
+        }
+        let version: Version =
+            version_raw
+                .parse()
+                .map_err(|_| TexError::ManifestInvalidVersion {
+                    value: version_raw.clone(),
+                })?;
+
+        let entrypoint = PathBuf::from(&entrypoint_raw);
+        if entrypoint.is_absolute() {
+            return Err(TexError::ManifestEntrypointEscape {
+                entrypoint: entrypoint.clone(),
+            });
+        }
+        for c in entrypoint.components() {
+            if matches!(c, std::path::Component::ParentDir) {
+                return Err(TexError::ManifestEntrypointEscape {
+                    entrypoint: entrypoint.clone(),
+                });
+            }
+        }
+        if entrypoint.extension().and_then(|s| s.to_str()) != Some("tex") {
+            return Err(TexError::ManifestEntrypointNotTex {
+                entrypoint: entrypoint.clone(),
+            });
+        }
+        let entrypoint_abs = package_root.join(&entrypoint);
+        if !entrypoint_abs.exists() || !entrypoint_abs.is_file() {
+            return Err(TexError::ManifestEntrypointMissing {
+                entrypoint: entrypoint.clone(),
+            });
+        }
+
+        Ok(Self {
+            identifier,
+            version,
+            entrypoint,
+            entrypoint_abs,
+        })
+    }
+}
+
+fn require_str(table: &toml::Table, field: &'static str, path: &Path) -> Result<String, TexError> {
+    let value = table
+        .get(field)
+        .ok_or_else(|| TexError::ManifestMissingField {
+            path: path.to_path_buf(),
+            field,
+        })?;
+    match value {
+        toml::Value::String(s) if !s.is_empty() => Ok(s.clone()),
+        _ => Err(TexError::ManifestMissingField {
+            path: path.to_path_buf(),
+            field,
+        }),
+    }
+}
+
+/// Enumerate every built-in template in `dir` as a bare-name `Identifier`.
+///
+/// Any file whose stem is not a valid built-in identifier (uppercase,
+/// leading special char, …) is skipped with a warning; the pipeline keeps
+/// working with the remaining valid templates.
+pub fn list_builtin_identifiers(dir: &Path) -> Result<Vec<Identifier>, TexError> {
+    let templates = list_templates(dir)?;
+    let mut ids = Vec::with_capacity(templates.len());
+    for t in templates {
+        match Identifier::builtin(&t.name) {
+            Ok(id) => ids.push(id),
+            Err(_) => tracing::warn!(
+                name = %t.name,
+                "skipping built-in template with non-identifier name"
+            ),
+        }
+    }
+    Ok(ids)
+}
+
 pub fn read_template(dir: &Path, name: &str) -> Result<Vec<u8>, TexError> {
     let path = resolve_template(dir, name)?;
     fs::read(&path).map_err(|e| match e.kind() {
@@ -301,6 +603,107 @@ mod tests {
 
     fn seed(dir: &Path, name: &str, content: &str) {
         std::fs::write(dir.join(name), content).unwrap();
+    }
+
+    // ---- Spec 007 FR-006 collision detection tests ----
+
+    #[test]
+    fn check_template_collisions_flags_makeuppercase_pattern() {
+        let src = "\\renewcommand{\\MakeUppercase}[1]{\\uppercase{#1}}";
+        let err = check_template_collisions("test", src).unwrap_err();
+        match err {
+            TexError::TeraRenderError { detail, .. } => {
+                assert!(detail.contains("collision"));
+                assert!(detail.contains("uppercase") || detail.contains("{#"));
+            }
+            other => panic!("expected TeraRenderError, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn check_template_collisions_passes_clean_template() {
+        let src = "\\documentclass{article}\\begin{document}{{ x }}\\end{document}";
+        assert!(check_template_collisions("test", src).is_ok());
+    }
+
+    #[test]
+    fn check_template_collisions_ignores_tera_comment_outside_macro() {
+        let src = "before {# this is a real Tera comment #} after";
+        assert!(check_template_collisions("test", src).is_ok());
+    }
+
+    #[test]
+    fn check_template_collisions_reports_line_and_column() {
+        let src = "\\documentclass{article}\n\\begin{document}\n\\bad{#1}\n\\end{document}";
+        let err = check_template_collisions("test", src).unwrap_err();
+        match err {
+            TexError::TeraRenderError { detail, .. } => {
+                assert!(detail.contains("line 3"), "detail: {detail}");
+            }
+            other => panic!("expected TeraRenderError, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn version_parses_plain_semver() {
+        let v: Version = "1.2.3".parse().unwrap();
+        assert_eq!(v, Version::new(1, 2, 3));
+        assert_eq!(v.to_string(), "1.2.3");
+    }
+
+    #[test]
+    fn version_parses_with_pre() {
+        let v: Version = "1.0.0-beta".parse().unwrap();
+        assert_eq!(v.pre.as_deref(), Some("beta"));
+        assert_eq!(v.to_string(), "1.0.0-beta");
+    }
+
+    #[test]
+    fn version_parses_with_build() {
+        let v: Version = "1.0.0+ci".parse().unwrap();
+        assert_eq!(v.build.as_deref(), Some("ci"));
+        assert_eq!(v.to_string(), "1.0.0+ci");
+    }
+
+    #[test]
+    fn version_parses_with_pre_and_build() {
+        let v: Version = "1.0.0-alpha.1+ci.42".parse().unwrap();
+        assert_eq!(v.pre.as_deref(), Some("alpha.1"));
+        assert_eq!(v.build.as_deref(), Some("ci.42"));
+        assert_eq!(v.to_string(), "1.0.0-alpha.1+ci.42");
+    }
+
+    #[test]
+    fn version_rejects_missing_patch() {
+        assert!("1.0".parse::<Version>().is_err());
+    }
+
+    #[test]
+    fn version_rejects_extra_segment() {
+        assert!("1.0.0.0".parse::<Version>().is_err());
+    }
+
+    #[test]
+    fn version_rejects_non_numeric_core() {
+        assert!("1.a.0".parse::<Version>().is_err());
+        assert!("v1.0.0".parse::<Version>().is_err());
+    }
+
+    #[test]
+    fn version_rejects_empty_pre_or_build() {
+        assert!("1.0.0-".parse::<Version>().is_err());
+        assert!("1.0.0+".parse::<Version>().is_err());
+    }
+
+    #[test]
+    fn version_ordering_by_major_minor_patch() {
+        let a: Version = "1.0.0".parse().unwrap();
+        let b: Version = "1.0.1".parse().unwrap();
+        let c: Version = "1.1.0".parse().unwrap();
+        let d: Version = "2.0.0".parse().unwrap();
+        assert!(a < b);
+        assert!(b < c);
+        assert!(c < d);
     }
 
     #[test]

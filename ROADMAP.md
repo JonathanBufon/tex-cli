@@ -139,3 +139,14 @@ build these to reach 1.0.
   (pre-1.0 API audit fix).
 - **2026-07-18** — Spec 006 implemented: full PT → EN translation of
   every user-visible string; i18n decision blocker closed.
+- **2026-08-03** — Spec 007 (auto PDF pipeline) implemented end-to-end:
+  `tex-cli build --json` one-command JSON→PDF, `tex-cli template
+  install|list|remove|trust` for installable third-party templates with
+  per-`(id, version)` trust prompts and a hard compile-time sandbox
+  (`\write18` off / `--only-cached` / `openout_any=p`), universal
+  LaTeX escaping of JSON string values (FR-005 breaking behaviour
+  change), load-time template↔LaTeX collision detection, zero-config
+  first-run bootstrap, and Tectonic bundle-cache warm-up during `init`.
+  Auto-generation of templates for unknown JSON explicitly out of v1
+  (Clarification Q1 = library-only). See
+  [`specs/007-auto-pdf-pipeline/`](specs/007-auto-pdf-pipeline/).

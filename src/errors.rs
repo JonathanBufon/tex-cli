@@ -85,6 +85,136 @@ pub enum TexError {
 
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
+
+    // ---- Install (spec 007, range 50-59) ----
+    #[error(
+        "'git' binary not found on PATH. \
+         Install git (Debian: apt install git; macOS: brew install git) \
+         and re-run."
+    )]
+    GitBinaryMissing,
+
+    #[error("git clone of '{url}' failed: {status}")]
+    GitCloneFailed { url: String, status: String },
+
+    #[error(
+        "installed template layout mismatch: manifest declares '{manifest_id}' \
+         but the destination path is '{}'. Refusing to install.",
+        dest_path.display()
+    )]
+    InstallPathMismatch {
+        manifest_id: String,
+        dest_path: PathBuf,
+    },
+
+    #[error(
+        "'{identifier}@{version}' is already installed at '{}'. \
+         Re-run with --force to overwrite.",
+        path.display()
+    )]
+    InstallOverwrite {
+        identifier: String,
+        version: String,
+        path: PathBuf,
+    },
+
+    // ---- Manifest (spec 007, range 60-69) ----
+    #[error("no template manifest found at '{}'.", path.display())]
+    ManifestNotFound { path: PathBuf },
+
+    #[error("template manifest at '{}' is not valid TOML: {detail}", path.display())]
+    ManifestParse { path: PathBuf, detail: String },
+
+    #[error("template manifest at '{}' is missing required field '{field}'.", path.display())]
+    ManifestMissingField { path: PathBuf, field: &'static str },
+
+    #[error(
+        "invalid template identifier: '{value}'. \
+         Third-party templates require the form 'namespace/name' \
+         where each segment starts with a-z0-9."
+    )]
+    ManifestInvalidIdentifier { value: String },
+
+    #[error(
+        "invalid template version: '{value}'. \
+         Expected semver 'MAJOR.MINOR.PATCH' with optional '-<pre>' and '+<build>'."
+    )]
+    ManifestInvalidVersion { value: String },
+
+    #[error(
+        "template entrypoint '{}' resolves outside the package root — refusing to install.",
+        entrypoint.display()
+    )]
+    ManifestEntrypointEscape { entrypoint: PathBuf },
+
+    #[error("template entrypoint '{}' does not exist in the package.", entrypoint.display())]
+    ManifestEntrypointMissing { entrypoint: PathBuf },
+
+    #[error("template entrypoint '{}' must end in '.tex'.", entrypoint.display())]
+    ManifestEntrypointNotTex { entrypoint: PathBuf },
+
+    // ---- Trust (spec 007, range 70-79) ----
+    #[error("trust denied by user for '{identifier}@{version}'; no compile performed.")]
+    TrustDenied { identifier: String, version: String },
+
+    #[error(
+        "trust file at '{}' is corrupted: {detail}. \
+         Delete it to reset (all installed templates will need re-approval).",
+        path.display()
+    )]
+    TrustFileCorrupted { path: PathBuf, detail: String },
+
+    // ---- Resolve (spec 007, range 80-89) ----
+    #[error(
+        "JSON has no 'document.type' or 'document.template' field; cannot resolve a template."
+    )]
+    MissingTypeField,
+
+    #[error(
+        "explicit 'document.template = \"{requested}\"' does not match any installed \
+         or built-in template."
+    )]
+    ExplicitTemplateMissing { requested: String },
+
+    #[error(
+        "'document.type = \"{requested}\"' matched no template.\n{}",
+        format_candidates("Near-matches", candidates)
+    )]
+    NoTemplateMatch {
+        requested: String,
+        candidates: Vec<String>,
+    },
+
+    #[error(
+        "'document.type = \"{requested}\"' matched multiple installed templates:\n{}\n\
+         Set 'document.template' in the JSON to disambiguate.",
+        format_candidates("Candidates", candidates)
+    )]
+    AmbiguousMatch {
+        requested: String,
+        candidates: Vec<String>,
+    },
+
+    // ---- Sandbox (spec 007, range 90-99) ----
+    #[error(
+        "template '{identifier}' attempted to write outside the output directory ('{}'). \
+         Compile aborted; no PDF produced.",
+        path.display()
+    )]
+    SandboxFilesystemEscape { path: PathBuf, identifier: String },
+
+    #[error(
+        "Tectonic bundle cache is empty — third-party template compiles require a warm cache. \
+         Run 'tex-cli init' or compile a built-in template once to populate the cache."
+    )]
+    SandboxBundleMissing,
+
+    #[error(
+        "template '{identifier}' attempted a restricted operation: \
+         shell escape (\\write18) — disabled for third-party templates. \
+         Compile aborted; no PDF produced."
+    )]
+    SandboxShellEscapeAttempted { identifier: String },
 }
 
 impl TexError {
@@ -106,6 +236,37 @@ impl TexError {
             TexError::EngineNotSupported { .. } => 42,
             TexError::Io(_) => 1,
             TexError::HomeDirUnavailable => 1,
+
+            // Install (50-59)
+            TexError::GitBinaryMissing => 50,
+            TexError::GitCloneFailed { .. } => 51,
+            TexError::InstallPathMismatch { .. } => 52,
+            TexError::InstallOverwrite { .. } => 53,
+
+            // Manifest (60-69)
+            TexError::ManifestNotFound { .. } => 60,
+            TexError::ManifestParse { .. } => 61,
+            TexError::ManifestMissingField { .. } => 62,
+            TexError::ManifestInvalidIdentifier { .. } => 63,
+            TexError::ManifestInvalidVersion { .. } => 64,
+            TexError::ManifestEntrypointEscape { .. } => 65,
+            TexError::ManifestEntrypointMissing { .. } => 66,
+            TexError::ManifestEntrypointNotTex { .. } => 67,
+
+            // Trust (70-79)
+            TexError::TrustDenied { .. } => 70,
+            TexError::TrustFileCorrupted { .. } => 71,
+
+            // Resolve (80-89)
+            TexError::MissingTypeField => 80,
+            TexError::ExplicitTemplateMissing { .. } => 81,
+            TexError::NoTemplateMatch { .. } => 82,
+            TexError::AmbiguousMatch { .. } => 83,
+
+            // Sandbox (90-99)
+            TexError::SandboxFilesystemEscape { .. } => 90,
+            TexError::SandboxBundleMissing => 91,
+            TexError::SandboxShellEscapeAttempted { .. } => 92,
         }
     }
 }
@@ -116,6 +277,19 @@ fn format_accepted(accepted: &[&'static str]) -> String {
         .map(|k| format!("  - {k}"))
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+fn format_candidates(label: &str, candidates: &[String]) -> String {
+    if candidates.is_empty() {
+        format!("{label}: (none)")
+    } else {
+        let list = candidates
+            .iter()
+            .map(|c| format!("  - {c}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        format!("{label}:\n{list}")
+    }
 }
 
 #[cfg(test)]
