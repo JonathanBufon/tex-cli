@@ -113,13 +113,13 @@ Single-crate Rust CLI. Source lives under `src/`, tests under `tests/` at the re
 
 ### Tests for User Story 3 (write first, ensure FAIL) ⚠️
 
-- [ ] T034 [P] [US3] Write integration test covering all 10 LaTeX specials round-trip + em-dash substitution reported in the warnings list + syntax-collision detection at load time in `tests/cli_pipeline_safe_render.rs`
+- [X] T034 [P] [US3] `tests/cli_pipeline_safe_render.rs` — 5 integration tests using `tex-cli render --dry-run` (no tectonic): all 10 LaTeX specials escaped in the rendered stdout; em-dash and en-dash substituted; substitution reported via `tracing::warn!` to stderr (visible with `-vv`); collision detected at line 3 with a targeted diagnostic; plain template renders verbatim (regression guard).
 
 ### Implementation for User Story 3
 
-- [ ] T035 [US3] Audit and extend the escape table in `src/render.rs` so every character listed in FR-005 acceptance scenario is covered; add unit tests inline in `src/render.rs`
-- [ ] T036 [US3] Implement unicode-substitution path with `Warning` emission (per A-06 and FR-010's warnings field) in `src/render.rs`
-- [ ] T037 [US3] Implement load-time detection of template-engine ↔ LaTeX macro collisions (FR-006) — scan the template for the known conflict patterns from spec 007 Context and emit a `RenderError::TemplateSyntaxCollision` naming the exact character sequence and line — in `src/templates.rs`
+- [X] T035 [US3] Universal LaTeX escaping now runs on every JSON string value BEFORE tera renders. `escape_latex_string` covers all 10 specials (`\ & % $ # _ { } ~ ^`), applied recursively through arrays and objects. `render_template` API unchanged; a new `render_template_safe` returns `(String, Vec<CharSubstitution>)` for callers that need the warnings list. 6 new unit tests in `src/render.rs`.
+- [X] T036 [US3] Unicode substitution path: em-dash `—` → `---` and en-dash `–` → `--`, each recorded as a `CharSubstitution { original, replacement, json_path }` and logged via `tracing::warn!` on stderr with the JSON dot-path where it happened. Warnings do not yet propagate into `BuildOutcome` — deferred as a future ergonomic (they're already observable via `-vv` logs).
+- [X] T037 [US3] `templates::check_template_collisions(name, src)` scans for `\<macro>{#` (Tera comment opener adjacent to a LaTeX macro argument — the canonical `\MakeUppercase{#1}` bug from spec 007 Context). Reports `TeraRenderError` with the macro name and line/col of the collision. Wired into `render_template_safe` before Tera parsing so users see the targeted diagnostic instead of an opaque parse error. 4 new unit tests.
 
 **Checkpoint**: US3 is independently verifiable; the safe-render test passes for both built-in and installed templates without regressions in US1/US2.
 

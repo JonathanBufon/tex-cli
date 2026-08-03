@@ -304,6 +304,66 @@ pub fn remove_template(dir: &Path, name: &str, force: bool) -> Result<PathBuf, T
     Ok(path)
 }
 
+/// Spec 007 FR-006 / SC-004: scan `template_src` for known template-engine ↔
+/// LaTeX macro syntax collisions BEFORE rendering, so the user gets a
+/// targeted diagnostic that names the offending characters instead of an
+/// opaque Tera parse error.
+///
+/// v1 covers the well-documented collision from spec 007 Context:
+/// `\macro{#N}` — the `{#` opens a Tera comment which never closes,
+/// producing a parse error unrelated to the LaTeX macro the author wrote.
+pub fn check_template_collisions(template_name: &str, src: &str) -> Result<(), TexError> {
+    let bytes = src.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        // Find `\<letters>{#` — a LaTeX macro immediately followed by a
+        // Tera comment opener.
+        if bytes[i] == b'\\' && i + 1 < bytes.len() && bytes[i + 1].is_ascii_alphabetic() {
+            let macro_start = i;
+            i += 1;
+            while i < bytes.len() && bytes[i].is_ascii_alphabetic() {
+                i += 1;
+            }
+            if i + 1 < bytes.len() && bytes[i] == b'{' && bytes[i + 1] == b'#' {
+                let (line, col) = line_col_of(src, macro_start);
+                let macro_name = std::str::from_utf8(&bytes[macro_start..i]).unwrap_or("<?>");
+                return Err(TexError::TeraRenderError {
+                    template_name: template_name.to_string(),
+                    detail: format!(
+                        "template↔LaTeX syntax collision at line {line}, col {col}: \
+                         the sequence '{{#' opens a Tera comment but appears inside \
+                         a LaTeX macro argument (`{macro_name}{{#…}}`). Rewrite the \
+                         macro argument (for example, define it as `\\newcommand{{\\{}[1]{{...}}` \
+                         and call it, or move the argument into a variable) so the \
+                         '#' is not adjacent to '{{'.",
+                        macro_name.trim_start_matches('\\')
+                    ),
+                });
+            }
+            continue;
+        }
+        i += 1;
+    }
+    Ok(())
+}
+
+fn line_col_of(src: &str, idx: usize) -> (usize, usize) {
+    let mut line = 1usize;
+    let mut col = 1usize;
+    for (i, ch) in src.char_indices() {
+        if i >= idx {
+            break;
+        }
+        if ch == '\n' {
+            line += 1;
+            col = 1;
+        } else {
+            col += 1;
+        }
+    }
+    (line, col)
+}
+
 /// The manifest file name required at the root of every third-party template
 /// package (spec 007 FR-019 / contracts/manifest-schema.md).
 pub const MANIFEST_FILE: &str = "tex-template.toml";
@@ -535,6 +595,45 @@ mod tests {
 
     fn seed(dir: &Path, name: &str, content: &str) {
         std::fs::write(dir.join(name), content).unwrap();
+    }
+
+    // ---- Spec 007 FR-006 collision detection tests ----
+
+    #[test]
+    fn check_template_collisions_flags_makeuppercase_pattern() {
+        let src = "\\renewcommand{\\MakeUppercase}[1]{\\uppercase{#1}}";
+        let err = check_template_collisions("test", src).unwrap_err();
+        match err {
+            TexError::TeraRenderError { detail, .. } => {
+                assert!(detail.contains("collision"));
+                assert!(detail.contains("uppercase") || detail.contains("{#"));
+            }
+            other => panic!("expected TeraRenderError, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn check_template_collisions_passes_clean_template() {
+        let src = "\\documentclass{article}\\begin{document}{{ x }}\\end{document}";
+        assert!(check_template_collisions("test", src).is_ok());
+    }
+
+    #[test]
+    fn check_template_collisions_ignores_tera_comment_outside_macro() {
+        let src = "before {# this is a real Tera comment #} after";
+        assert!(check_template_collisions("test", src).is_ok());
+    }
+
+    #[test]
+    fn check_template_collisions_reports_line_and_column() {
+        let src = "\\documentclass{article}\n\\begin{document}\n\\bad{#1}\n\\end{document}";
+        let err = check_template_collisions("test", src).unwrap_err();
+        match err {
+            TexError::TeraRenderError { detail, .. } => {
+                assert!(detail.contains("line 3"), "detail: {detail}");
+            }
+            other => panic!("expected TeraRenderError, got {other:?}"),
+        }
     }
 
     #[test]
