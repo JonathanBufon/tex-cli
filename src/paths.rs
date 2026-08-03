@@ -7,6 +7,24 @@ pub fn config_file_path() -> Result<PathBuf, TexError> {
     Ok(base.join("tex").join("config.toml"))
 }
 
+/// Root directory for installed third-party template packages
+/// (`~/.local/share/tex/templates/` on Linux).
+///
+/// See spec 007 research R5.
+pub fn templates_dir() -> Result<PathBuf, TexError> {
+    let base = dirs::data_local_dir().ok_or(TexError::HomeDirUnavailable)?;
+    Ok(base.join("tex").join("templates"))
+}
+
+/// File that persists trust records
+/// (`~/.local/share/tex/trust.toml` on Linux).
+///
+/// See spec 007 research R3.
+pub fn trust_file() -> Result<PathBuf, TexError> {
+    let base = dirs::data_local_dir().ok_or(TexError::HomeDirUnavailable)?;
+    Ok(base.join("tex").join("trust.toml"))
+}
+
 pub fn expand_user_path(raw: &str) -> Result<PathBuf, TexError> {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
@@ -90,5 +108,17 @@ mod tests {
     fn config_file_path_ends_in_tex_config_toml() {
         let p = config_file_path().unwrap();
         assert!(p.ends_with("tex/config.toml"));
+    }
+
+    #[test]
+    fn templates_dir_ends_in_tex_templates() {
+        let p = templates_dir().unwrap();
+        assert!(p.ends_with("tex/templates"));
+    }
+
+    #[test]
+    fn trust_file_ends_in_tex_trust_toml() {
+        let p = trust_file().unwrap();
+        assert!(p.ends_with("tex/trust.toml"));
     }
 }

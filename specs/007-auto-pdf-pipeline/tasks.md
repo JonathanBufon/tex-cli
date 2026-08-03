@@ -37,11 +37,11 @@ Single-crate Rust CLI. Source lives under `src/`, tests under `tests/` at the re
 
 **⚠️ CRITICAL**: US1 through US4 cannot begin until this phase is complete.
 
-- [ ] T003 Implement `Identifier` value type (parse, `Display`, `Eq`, regex validation `^[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9._-]*$` for third-party and `^[a-z0-9][a-z0-9._-]*$` for bare built-in) in `src/discovery.rs`
-- [ ] T004 [P] Implement `Version` value type (parse `major.minor.patch` with optional `-<pre>` and `+<build>`, `PartialOrd` on numeric components) in `src/templates.rs`
-- [ ] T005 [P] Implement `paths::templates_dir()` and `paths::trust_file()` (both via `dirs::data_local_dir().join("tex/…")`, no hardcoding) in `src/paths.rs`
-- [ ] T006 Flesh out every variant of the six error enums to match [data-model.md § Errors](./data-model.md) in `src/errors.rs`
-- [ ] T007 Map every new error variant to a distinct exit code (0/2/3/4/5/6 per [contracts/cli-build-pipeline.md](./contracts/cli-build-pipeline.md)) in the existing exit-code function in `src/errors.rs` and wire it in `src/main.rs`
+- [X] T003 Implement `Identifier` value type (parse, `Display`, `Eq`, regex validation `^[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9._-]*$` for third-party and `^[a-z0-9][a-z0-9._-]*$` for bare built-in) in `src/discovery.rs` — manual char validation (no `regex` crate; constitution stack)
+- [X] T004 [P] Implement `Version` value type (parse `major.minor.patch` with optional `-<pre>` and `+<build>`, `PartialOrd` on numeric components) in `src/templates.rs`
+- [X] T005 [P] Implement `paths::templates_dir()` and `paths::trust_file()` (both via `dirs::data_local_dir().join("tex/…")`, no hardcoding) in `src/paths.rs`
+- [X] T006 ~~Flesh out every variant of the six error enums~~ **Adapted**: added 23 new variants to the existing single `TexError` enum in `src/errors.rs`, grouped by concern (install 50-59, manifest 60-69, trust 70-79, resolve 80-89, sandbox 90-99). Preserves single-enum convention.
+- [X] T007 Map every new error variant to a distinct exit code (**adapted**: ranges 50-99 instead of 0-6, per T002/T006 note) in `TexError::exit_code()` in `src/errors.rs`. `src/main.rs` unchanged — it already dispatches via `downcast_ref::<TexError>().map(|te| te.exit_code())`.
 
 **Checkpoint**: Foundation ready; `cargo build` and `cargo test --all` still green (no new tests yet — foundational types are exercised via existing tests only).
 

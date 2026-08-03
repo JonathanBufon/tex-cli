@@ -1,5 +1,8 @@
+use std::cmp::Ordering;
+use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::time::UNIX_EPOCH;
 
 use serde::Serialize;
@@ -12,6 +15,112 @@ pub struct AddedTemplate {
     pub path: PathBuf,
     pub bytes_written: u64,
     pub overwrote_existing: bool,
+}
+
+/// Semver-lite: MAJOR.MINOR.PATCH with optional `-<pre>` and `+<build>`.
+///
+/// Ordering is numeric on (major, minor, patch); pre/build are recorded
+/// but do not participate in ordering (v1 keeps the comparison simple —
+/// FR-016 only needs equality for the re-prompt-on-upgrade check).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Version {
+    pub major: u32,
+    pub minor: u32,
+    pub patch: u32,
+    pub pre: Option<String>,
+    pub build: Option<String>,
+}
+
+impl Version {
+    pub fn new(major: u32, minor: u32, patch: u32) -> Self {
+        Self {
+            major,
+            minor,
+            patch,
+            pre: None,
+            build: None,
+        }
+    }
+}
+
+impl fmt::Display for Version {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}.{}.{}", self.major, self.minor, self.patch)?;
+        if let Some(pre) = &self.pre {
+            write!(f, "-{pre}")?;
+        }
+        if let Some(build) = &self.build {
+            write!(f, "+{build}")?;
+        }
+        Ok(())
+    }
+}
+
+impl PartialOrd for Version {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Version {
+    fn cmp(&self, other: &Self) -> Ordering {
+        (self.major, self.minor, self.patch).cmp(&(other.major, other.minor, other.patch))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VersionParseError {
+    pub value: String,
+}
+
+impl FromStr for Version {
+    type Err = VersionParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let err = || VersionParseError {
+            value: s.to_string(),
+        };
+
+        // Split build first: "1.2.3-alpha+ci" -> ("1.2.3-alpha", "ci")
+        let (rest, build) = match s.split_once('+') {
+            Some((r, b)) if !b.is_empty() && is_dot_ident(b) => (r, Some(b.to_string())),
+            Some(_) => return Err(err()),
+            None => (s, None),
+        };
+        // Then pre: "1.2.3-alpha" -> ("1.2.3", "alpha")
+        let (core, pre) = match rest.split_once('-') {
+            Some((c, p)) if !p.is_empty() && is_dot_ident(p) => (c, Some(p.to_string())),
+            Some(_) => return Err(err()),
+            None => (rest, None),
+        };
+
+        let mut parts = core.split('.');
+        let major = parts.next().and_then(|s| s.parse::<u32>().ok()).ok_or(err())?;
+        let minor = parts.next().and_then(|s| s.parse::<u32>().ok()).ok_or(err())?;
+        let patch = parts.next().and_then(|s| s.parse::<u32>().ok()).ok_or(err())?;
+        if parts.next().is_some() {
+            return Err(err());
+        }
+        Ok(Self {
+            major,
+            minor,
+            patch,
+            pre,
+            build,
+        })
+    }
+}
+
+/// Validate that a pre/build identifier is a non-empty dot-separated list of
+/// `[A-Za-z0-9-]+` segments (semver-compatible).
+fn is_dot_ident(s: &str) -> bool {
+    !s.is_empty()
+        && s.split('.').all(|seg| {
+            !seg.is_empty()
+                && seg
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '-')
+        })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -301,6 +410,68 @@ mod tests {
 
     fn seed(dir: &Path, name: &str, content: &str) {
         std::fs::write(dir.join(name), content).unwrap();
+    }
+
+    #[test]
+    fn version_parses_plain_semver() {
+        let v: Version = "1.2.3".parse().unwrap();
+        assert_eq!(v, Version::new(1, 2, 3));
+        assert_eq!(v.to_string(), "1.2.3");
+    }
+
+    #[test]
+    fn version_parses_with_pre() {
+        let v: Version = "1.0.0-beta".parse().unwrap();
+        assert_eq!(v.pre.as_deref(), Some("beta"));
+        assert_eq!(v.to_string(), "1.0.0-beta");
+    }
+
+    #[test]
+    fn version_parses_with_build() {
+        let v: Version = "1.0.0+ci".parse().unwrap();
+        assert_eq!(v.build.as_deref(), Some("ci"));
+        assert_eq!(v.to_string(), "1.0.0+ci");
+    }
+
+    #[test]
+    fn version_parses_with_pre_and_build() {
+        let v: Version = "1.0.0-alpha.1+ci.42".parse().unwrap();
+        assert_eq!(v.pre.as_deref(), Some("alpha.1"));
+        assert_eq!(v.build.as_deref(), Some("ci.42"));
+        assert_eq!(v.to_string(), "1.0.0-alpha.1+ci.42");
+    }
+
+    #[test]
+    fn version_rejects_missing_patch() {
+        assert!("1.0".parse::<Version>().is_err());
+    }
+
+    #[test]
+    fn version_rejects_extra_segment() {
+        assert!("1.0.0.0".parse::<Version>().is_err());
+    }
+
+    #[test]
+    fn version_rejects_non_numeric_core() {
+        assert!("1.a.0".parse::<Version>().is_err());
+        assert!("v1.0.0".parse::<Version>().is_err());
+    }
+
+    #[test]
+    fn version_rejects_empty_pre_or_build() {
+        assert!("1.0.0-".parse::<Version>().is_err());
+        assert!("1.0.0+".parse::<Version>().is_err());
+    }
+
+    #[test]
+    fn version_ordering_by_major_minor_patch() {
+        let a: Version = "1.0.0".parse().unwrap();
+        let b: Version = "1.0.1".parse().unwrap();
+        let c: Version = "1.1.0".parse().unwrap();
+        let d: Version = "2.0.0".parse().unwrap();
+        assert!(a < b);
+        assert!(b < c);
+        assert!(c < d);
     }
 
     #[test]
