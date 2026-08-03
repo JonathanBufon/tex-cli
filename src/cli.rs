@@ -51,6 +51,10 @@ pub enum Commands {
     /// Manage LaTeX templates in `paths.templates_dir`.
     Templates(TemplatesArgs),
 
+    /// Spec 007: manage third-party (installable) templates.
+    #[command(subcommand)]
+    Template(TemplateCmd),
+
     /// Render a template with JSON data, producing a `.tex`.
     Render(RenderArgs),
 
@@ -201,6 +205,51 @@ pub struct AddTemplateArgs {
     /// Overwrite an existing template without confirming.
     #[arg(long)]
     pub force: bool,
+}
+
+/// Spec 007 subcommand tree — third-party templates.
+///
+/// See `specs/007-auto-pdf-pipeline/contracts/cli-template-subcommands.md`.
+#[derive(Debug, Subcommand)]
+pub enum TemplateCmd {
+    /// Install a third-party template from a Git URL or local filesystem path.
+    Install {
+        /// Git URL (contains `://` or `.git` suffix) or local path.
+        source: String,
+        /// Overwrite an existing `identifier@version` install.
+        #[arg(long)]
+        force: bool,
+    },
+    /// List every installed third-party template.
+    List {
+        /// Emit structured JSON to stdout for scripting.
+        #[arg(long)]
+        json: bool,
+        /// Include built-in library templates in the listing.
+        #[arg(long)]
+        include_builtin: bool,
+    },
+    /// Uninstall an installed third-party template by identifier
+    /// (`namespace/name`) and drop its trust records.
+    Remove {
+        /// Full identifier — `namespace/name`.
+        identifier: String,
+        /// Skip the interactive confirmation.
+        #[arg(long)]
+        yes: bool,
+    },
+    /// Manage trust records without going through a compile.
+    Trust {
+        /// Full identifier — `namespace/name`.
+        identifier: String,
+        /// Restrict grant/revoke to this specific version. Absent → all
+        /// installed versions of that identifier.
+        #[arg(long)]
+        version: Option<String>,
+        /// Revoke instead of grant.
+        #[arg(long)]
+        revoke: bool,
+    },
 }
 
 #[derive(Debug, clap::Args)]
@@ -941,6 +990,24 @@ pub fn handle_templates_menu() -> Result<()> {
             let chosen = prompt_template_name(&names)?;
             handle_templates_remove(chosen, false)
         }
+        // Spec 007 T033 — third-party template flows.
+        TemplateMenuAction::InstallThirdParty => {
+            let source = crate::interactive::prompt_template_install_source()?;
+            handle_template_install(source, false)
+        }
+        TemplateMenuAction::ListInstalled => handle_template_list(false, false),
+        TemplateMenuAction::RemoveInstalled => {
+            let id = crate::interactive::prompt_template_identifier(
+                "Identifier to remove (namespace/name):",
+            )?;
+            handle_template_remove(id, false)
+        }
+        TemplateMenuAction::ManageTrust => {
+            let id = crate::interactive::prompt_template_identifier(
+                "Identifier to (re)grant trust for (namespace/name):",
+            )?;
+            handle_template_trust(id, None, false)
+        }
         TemplateMenuAction::Quit => Ok(()),
     }
 }
@@ -961,5 +1028,239 @@ pub fn handle_config_set(key: String, value: String) -> Result<()> {
         "Config updated: {} = {}",
         change.key, change.normalized_value
     );
+    Ok(())
+}
+
+// ===================================================================
+// Spec 007 T029-T032: `tex-cli template <install|list|remove|trust>`
+// ===================================================================
+
+pub fn handle_template_install(source: String, force: bool) -> Result<()> {
+    let templates_root = crate::paths::templates_dir()?;
+
+    let installed = if crate::install::looks_like_git_url(&source) {
+        crate::install::install_from_git(&source, &templates_root, force)?
+    } else {
+        let path = crate::paths::expand_user_path(&source)?;
+        crate::install::install_from_local_path(&path, &templates_root, force)?
+    };
+
+    println!(
+        "installed {}@{} at {}",
+        installed.identifier,
+        installed.version,
+        installed.dest_dir.display()
+    );
+    Ok(())
+}
+
+pub fn handle_template_list(json: bool, include_builtin: bool) -> Result<()> {
+    let templates_root = crate::paths::templates_dir()?;
+    let trust_path = crate::paths::trust_file()?;
+    let installed = crate::install::list_installed(&templates_root);
+
+    if json {
+        let items: Vec<serde_json::Value> = installed
+            .iter()
+            .map(|p| {
+                serde_json::json!({
+                    "identifier": p.identifier.to_string(),
+                    "version":    p.version.to_string(),
+                    "path":       p.dest_dir.display().to_string(),
+                    "trusted":    crate::trust::is_trusted(&trust_path, &p.identifier, &p.version),
+                    "kind":       "installed",
+                })
+            })
+            .collect();
+        let mut all = items;
+        if include_builtin {
+            let cfg_path = config_file_path()?;
+            let cfg = Config::load(&cfg_path)?;
+            let builtins = crate::templates::list_builtin_identifiers(&cfg.paths.templates_dir)?;
+            for id in builtins {
+                all.push(serde_json::json!({
+                    "identifier": id.to_string(),
+                    "kind":       "builtin",
+                }));
+            }
+        }
+        println!("{}", serde_json::to_string_pretty(&all)?);
+        return Ok(());
+    }
+
+    if installed.is_empty() && !include_builtin {
+        println!("No installed third-party templates.");
+        println!(
+            "Install one with: tex-cli template install <git-url|path>"
+        );
+        return Ok(());
+    }
+
+    println!("IDENTIFIER                    VERSION   TRUSTED   PATH");
+    for p in &installed {
+        let trusted = crate::trust::is_trusted(&trust_path, &p.identifier, &p.version);
+        println!(
+            "{:<30}{:<10}{:<10}{}",
+            p.identifier,
+            p.version,
+            if trusted { "yes" } else { "no" },
+            p.dest_dir.display()
+        );
+    }
+
+    if include_builtin {
+        let cfg_path = config_file_path()?;
+        let cfg = Config::load(&cfg_path)?;
+        let builtins = crate::templates::list_builtin_identifiers(&cfg.paths.templates_dir)?;
+        if !builtins.is_empty() {
+            println!();
+            println!("Built-in library:");
+            for id in builtins {
+                println!("  {id}");
+            }
+        }
+    }
+    Ok(())
+}
+
+pub fn handle_template_remove(identifier: String, yes: bool) -> Result<()> {
+    use std::io::IsTerminal;
+
+    let id: crate::discovery::Identifier = identifier
+        .parse()
+        .map_err(|_| TexError::ManifestInvalidIdentifier {
+            value: identifier.clone(),
+        })?;
+    if !id.is_third_party() {
+        return Err(anyhow::Error::new(TexError::ManifestInvalidIdentifier {
+            value: identifier,
+        }));
+    }
+    let templates_root = crate::paths::templates_dir()?;
+
+    if !yes {
+        if !std::io::stdin().is_terminal() {
+            eprintln!(
+                "Refusing to remove '{id}' without --yes in a non-interactive context."
+            );
+            return Err(anyhow::Error::new(TexError::UserAborted));
+        }
+        let confirmed = inquire::Confirm::new(&format!(
+            "Remove installed template '{id}' and drop its trust records?"
+        ))
+        .with_default(false)
+        .prompt()
+        .map_err(|e| {
+            anyhow::Error::new(match e {
+                inquire::InquireError::OperationCanceled
+                | inquire::InquireError::OperationInterrupted => TexError::UserAborted,
+                other => TexError::Io(std::io::Error::other(other.to_string())),
+            })
+        })?;
+        if !confirmed {
+            return Err(anyhow::Error::new(TexError::UserAborted));
+        }
+    }
+
+    crate::install::uninstall(&id, &templates_root)?;
+
+    // Drop trust records so a later re-install prompts again.
+    let trust_path = crate::paths::trust_file()?;
+    let mut trust_file = crate::trust::TrustFile::load(&trust_path)?;
+    trust_file.revoke_all(&id);
+    trust_file.save(&trust_path)?;
+
+    println!("removed {id}");
+    Ok(())
+}
+
+pub fn handle_template_trust(
+    identifier: String,
+    version: Option<String>,
+    revoke: bool,
+) -> Result<()> {
+    use std::io::IsTerminal;
+
+    let id: crate::discovery::Identifier = identifier
+        .parse()
+        .map_err(|_| TexError::ManifestInvalidIdentifier {
+            value: identifier.clone(),
+        })?;
+    if !id.is_third_party() {
+        return Err(anyhow::Error::new(TexError::ManifestInvalidIdentifier {
+            value: identifier,
+        }));
+    }
+    let templates_root = crate::paths::templates_dir()?;
+    let trust_path = crate::paths::trust_file()?;
+
+    // Enumerate installed versions of this identifier.
+    let installed: Vec<_> = crate::install::list_installed(&templates_root)
+        .into_iter()
+        .filter(|p| p.identifier == id)
+        .collect();
+    if installed.is_empty() {
+        return Err(anyhow::Error::new(TexError::ExplicitTemplateMissing {
+            requested: id.to_string(),
+        }));
+    }
+
+    let target_versions: Vec<crate::templates::Version> = match &version {
+        Some(v_raw) => {
+            let v: crate::templates::Version =
+                v_raw.parse().map_err(|_| TexError::ManifestInvalidVersion {
+                    value: v_raw.clone(),
+                })?;
+            vec![v]
+        }
+        None => installed.iter().map(|p| p.version.clone()).collect(),
+    };
+
+    let mut trust_file = crate::trust::TrustFile::load(&trust_path)?;
+
+    if revoke {
+        for v in &target_versions {
+            trust_file.revoke_version(&id, v);
+        }
+        trust_file.save(&trust_path)?;
+        println!("revoked {} version(s) for {id}", target_versions.len());
+        return Ok(());
+    }
+
+    // Grant flow — prompt unless already trusted, then persist.
+    let mut granted = 0;
+    for v in &target_versions {
+        if trust_file.is_trusted(&id, v) {
+            continue;
+        }
+        if !std::io::stdin().is_terminal() {
+            eprintln!(
+                "Refusing to trust {id}@{v} without a TTY. \
+                 Grant approval interactively or set --version explicitly in a TTY."
+            );
+            return Err(anyhow::Error::new(TexError::TrustDenied {
+                identifier: id.to_string(),
+                version: v.to_string(),
+            }));
+        }
+        let approved = inquire::Confirm::new(&format!(
+            "Trust {id}@{v}? (compiles run inside the spec-007 sandbox)"
+        ))
+        .with_default(false)
+        .prompt()
+        .map_err(|e| {
+            anyhow::Error::new(match e {
+                inquire::InquireError::OperationCanceled
+                | inquire::InquireError::OperationInterrupted => TexError::UserAborted,
+                other => TexError::Io(std::io::Error::other(other.to_string())),
+            })
+        })?;
+        if approved {
+            trust_file.grant(&id, v);
+            granted += 1;
+        }
+    }
+    trust_file.save(&trust_path)?;
+    println!("granted trust for {granted} version(s) of {id}");
     Ok(())
 }

@@ -304,6 +304,110 @@ pub fn remove_template(dir: &Path, name: &str, force: bool) -> Result<PathBuf, T
     Ok(path)
 }
 
+/// The manifest file name required at the root of every third-party template
+/// package (spec 007 FR-019 / contracts/manifest-schema.md).
+pub const MANIFEST_FILE: &str = "tex-template.toml";
+
+/// Loaded, validated `tex-template.toml` (spec 007 FR-019).
+///
+/// Access `identifier`, `version`, and the absolute path to the `.tex`
+/// entrypoint after successful load.
+#[derive(Debug, Clone)]
+pub struct Manifest {
+    pub identifier: Identifier,
+    pub version: Version,
+    /// Relative to the package root — validated to remain within it.
+    pub entrypoint: PathBuf,
+    /// Absolute path resolved against `package_root`.
+    pub entrypoint_abs: PathBuf,
+}
+
+impl Manifest {
+    /// Load and fully validate `<package_root>/tex-template.toml`.
+    pub fn load(package_root: &Path) -> Result<Self, TexError> {
+        let manifest_path = package_root.join(MANIFEST_FILE);
+        if !manifest_path.exists() {
+            return Err(TexError::ManifestNotFound {
+                path: manifest_path,
+            });
+        }
+        let raw = fs::read_to_string(&manifest_path).map_err(TexError::Io)?;
+        let table: toml::Table = toml::from_str(&raw).map_err(|e| TexError::ManifestParse {
+            path: manifest_path.clone(),
+            detail: e.to_string(),
+        })?;
+
+        let identifier_raw = require_str(&table, "identifier", &manifest_path)?;
+        let version_raw = require_str(&table, "version", &manifest_path)?;
+        let entrypoint_raw = require_str(&table, "entrypoint", &manifest_path)?;
+
+        let identifier: Identifier = identifier_raw
+            .parse()
+            .map_err(|_| TexError::ManifestInvalidIdentifier {
+                value: identifier_raw.clone(),
+            })?;
+        // Third-party manifests MUST declare a namespace (FR-018/FR-019).
+        if !identifier.is_third_party() {
+            return Err(TexError::ManifestInvalidIdentifier {
+                value: identifier_raw,
+            });
+        }
+        let version: Version = version_raw
+            .parse()
+            .map_err(|_| TexError::ManifestInvalidVersion {
+                value: version_raw.clone(),
+            })?;
+
+        let entrypoint = PathBuf::from(&entrypoint_raw);
+        if entrypoint.is_absolute() {
+            return Err(TexError::ManifestEntrypointEscape {
+                entrypoint: entrypoint.clone(),
+            });
+        }
+        for c in entrypoint.components() {
+            if matches!(c, std::path::Component::ParentDir) {
+                return Err(TexError::ManifestEntrypointEscape {
+                    entrypoint: entrypoint.clone(),
+                });
+            }
+        }
+        if entrypoint.extension().and_then(|s| s.to_str()) != Some("tex") {
+            return Err(TexError::ManifestEntrypointNotTex {
+                entrypoint: entrypoint.clone(),
+            });
+        }
+        let entrypoint_abs = package_root.join(&entrypoint);
+        if !entrypoint_abs.exists() || !entrypoint_abs.is_file() {
+            return Err(TexError::ManifestEntrypointMissing {
+                entrypoint: entrypoint.clone(),
+            });
+        }
+
+        Ok(Self {
+            identifier,
+            version,
+            entrypoint,
+            entrypoint_abs,
+        })
+    }
+}
+
+fn require_str(table: &toml::Table, field: &'static str, path: &Path) -> Result<String, TexError> {
+    let value = table
+        .get(field)
+        .ok_or_else(|| TexError::ManifestMissingField {
+            path: path.to_path_buf(),
+            field,
+        })?;
+    match value {
+        toml::Value::String(s) if !s.is_empty() => Ok(s.clone()),
+        _ => Err(TexError::ManifestMissingField {
+            path: path.to_path_buf(),
+            field,
+        }),
+    }
+}
+
 /// Enumerate every built-in template in `dir` as a bare-name `Identifier`.
 ///
 /// Any file whose stem is not a valid built-in identifier (uppercase,

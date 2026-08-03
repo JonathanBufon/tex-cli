@@ -99,15 +99,27 @@ pub enum TemplateMenuAction {
     Show,
     Add,
     Remove,
+    /// Spec 007 T033: install a third-party template (Git URL or filesystem path).
+    InstallThirdParty,
+    /// Spec 007 T033: list installed third-party templates.
+    ListInstalled,
+    /// Spec 007 T033: remove an installed third-party template.
+    RemoveInstalled,
+    /// Spec 007 T033: grant/revoke trust for an installed template.
+    ManageTrust,
     Quit,
 }
 
 pub fn template_menu() -> Result<TemplateMenuAction, TexError> {
     let options = vec![
-        "List templates",
-        "Inspect template",
-        "Add template",
-        "Remove template",
+        "List built-in templates",
+        "Inspect built-in template",
+        "Add built-in template",
+        "Remove built-in template",
+        "Install third-party template (Git URL or path)",
+        "List installed third-party templates",
+        "Remove an installed third-party template",
+        "Manage trust for an installed template",
         "Quit",
     ];
     let choice = Select::new("What would you like to do with templates?", options)
@@ -116,12 +128,32 @@ pub fn template_menu() -> Result<TemplateMenuAction, TexError> {
         .map_err(map_inquire_err)?;
 
     Ok(match choice {
-        "List templates" => TemplateMenuAction::List,
-        "Inspect template" => TemplateMenuAction::Show,
-        "Add template" => TemplateMenuAction::Add,
-        "Remove template" => TemplateMenuAction::Remove,
+        "List built-in templates" => TemplateMenuAction::List,
+        "Inspect built-in template" => TemplateMenuAction::Show,
+        "Add built-in template" => TemplateMenuAction::Add,
+        "Remove built-in template" => TemplateMenuAction::Remove,
+        "Install third-party template (Git URL or path)" => TemplateMenuAction::InstallThirdParty,
+        "List installed third-party templates" => TemplateMenuAction::ListInstalled,
+        "Remove an installed third-party template" => TemplateMenuAction::RemoveInstalled,
+        "Manage trust for an installed template" => TemplateMenuAction::ManageTrust,
         _ => TemplateMenuAction::Quit,
     })
+}
+
+/// Spec 007 T033: prompts for a third-party template source (Git URL or path).
+pub fn prompt_template_install_source() -> Result<String, TexError> {
+    Text::new("Git URL or local path to the third-party template package:")
+        .prompt()
+        .map(|s| s.trim().to_string())
+        .map_err(map_inquire_err)
+}
+
+/// Spec 007 T033: prompts for a template identifier (`namespace/name`).
+pub fn prompt_template_identifier(prompt: &str) -> Result<String, TexError> {
+    Text::new(prompt)
+        .prompt()
+        .map(|s| s.trim().to_string())
+        .map_err(map_inquire_err)
 }
 
 pub fn prompt_template_name(available: &[String]) -> Result<String, TexError> {

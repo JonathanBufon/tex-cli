@@ -127,10 +127,28 @@ pub fn run_engine(
     cwd: &Path,
     tex_filename: &str,
     verbose: u8,
+    sandbox: SandboxDirective,
 ) -> Result<(), (i32, String)> {
-    let args = engine.args_for(tex_filename);
+    let mut args = engine.args_for(tex_filename);
+    // Spec 007 FR-017 / research R1: for tectonic, `--only-cached` refuses
+    // the network bundle fetch. Other engines don't have an equivalent flag
+    // in v1 — the sandbox is honored best-effort on tectonic; Docker per
+    // A-01 provides an outer isolation layer for any engine.
+    if sandbox.only_cached_bundle && matches!(engine, SupportedEngine::Tectonic) {
+        args.push("--only-cached".to_string());
+    }
     let mut cmd = Command::new(engine.binary_name());
     cmd.current_dir(cwd).args(&args);
+    if sandbox.paranoid_openout {
+        // KPathsea paranoid mode: prevents \openout escapes on engines that
+        // honor the env var (tectonic passes it through to its bundled
+        // KPathsea; a no-op is harmless on engines that don't).
+        cmd.env("openout_any", "p");
+    }
+    // Never opt into shell-escape; explicit assertion for future engines.
+    if sandbox.disable_shell_escape {
+        cmd.env_remove("shell_escape");
+    }
 
     let stem = Path::new(tex_filename)
         .file_stem()
@@ -184,8 +202,75 @@ fn read_log_tail(log_path: &Path) -> Option<String> {
     }
 }
 
+/// Spec 007 FR-017: sandbox knobs applied at compile time for third-party
+/// templates. Composed inside this module so callers only carry a boolean
+/// concern ("is this a trusted built-in or an untrusted install?").
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SandboxDirective {
+    /// Never pass `-shell-escape` (tectonic defaults to off already; the
+    /// flag is a compile-time affirmation for future engines).
+    pub disable_shell_escape: bool,
+    /// Pass `--only-cached` to tectonic — refuses any bundle-network fetch.
+    pub only_cached_bundle: bool,
+    /// Set `openout_any=p` in the engine's env (KPathsea paranoid mode).
+    pub paranoid_openout: bool,
+}
+
+impl SandboxDirective {
+    pub const fn for_builtin() -> Self {
+        Self {
+            disable_shell_escape: false,
+            only_cached_bundle: false,
+            paranoid_openout: false,
+        }
+    }
+
+    pub const fn for_third_party() -> Self {
+        Self {
+            disable_shell_escape: true,
+            only_cached_bundle: true,
+            paranoid_openout: true,
+        }
+    }
+
+    pub fn is_sandboxed(&self) -> bool {
+        self.disable_shell_escape || self.only_cached_bundle || self.paranoid_openout
+    }
+}
+
+/// Backwards-compatible wrapper — delegates to `compile_and_write_sandboxed`
+/// with a no-op directive. Every pre-spec-007 call site continues to work.
 #[allow(clippy::too_many_arguments)]
 pub fn compile_and_write(
+    cfg: &Config,
+    tex_path: &Path,
+    engine: SupportedEngine,
+    output_pdf: &Path,
+    keep_tex: bool,
+    keep_logs: bool,
+    force: bool,
+    verbose: u8,
+) -> Result<CompileOutcome, TexError> {
+    compile_and_write_sandboxed(
+        cfg,
+        tex_path,
+        engine,
+        output_pdf,
+        keep_tex,
+        keep_logs,
+        force,
+        verbose,
+        SandboxDirective::for_builtin(),
+        None,
+    )
+}
+
+/// Spec 007 US2 entry point — same as `compile_and_write` but threads a
+/// sandbox directive through the engine invocation. `identifier_for_errors`
+/// carries the template identifier so a sandbox violation can be attributed
+/// to the offending template (per FR-017 error contract).
+#[allow(clippy::too_many_arguments)]
+pub fn compile_and_write_sandboxed(
     _cfg: &Config,
     tex_path: &Path,
     engine: SupportedEngine,
@@ -194,6 +279,8 @@ pub fn compile_and_write(
     keep_logs: bool,
     force: bool,
     verbose: u8,
+    sandbox: SandboxDirective,
+    identifier_for_errors: Option<&str>,
 ) -> Result<CompileOutcome, TexError> {
     if !tex_path.exists() {
         return Err(TexError::Io(std::io::Error::new(
@@ -220,13 +307,33 @@ pub fn compile_and_write(
     fs::copy(tex_path, &temp_tex)?;
 
     let start = Instant::now();
-    run_engine(engine, temp.path(), &tex_filename, verbose).map_err(|(_, log_tail)| {
-        TexError::CompileFailed {
-            engine: engine.to_string(),
-            tex_path: tex_path.to_path_buf(),
-            log_tail,
-        }
-    })?;
+    run_engine(engine, temp.path(), &tex_filename, verbose, sandbox).map_err(
+        |(_, log_tail)| {
+            // Detect canonical sandbox-violation signatures in the log tail
+            // and surface them as spec-007 SandboxError variants (FR-017).
+            if sandbox.is_sandboxed() {
+                if let Some(id) = identifier_for_errors {
+                    let lower = log_tail.to_ascii_lowercase();
+                    if lower.contains("write18")
+                        || lower.contains("shell escape")
+                        || lower.contains("shell-escape")
+                    {
+                        return TexError::SandboxShellEscapeAttempted {
+                            identifier: id.to_string(),
+                        };
+                    }
+                    if lower.contains("cache") && lower.contains("bundle") {
+                        return TexError::SandboxBundleMissing;
+                    }
+                }
+            }
+            TexError::CompileFailed {
+                engine: engine.to_string(),
+                tex_path: tex_path.to_path_buf(),
+                log_tail,
+            }
+        },
+    )?;
     let duration = start.elapsed();
 
     let overwrote_existing = output_pdf.exists();

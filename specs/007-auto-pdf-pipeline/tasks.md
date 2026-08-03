@@ -79,27 +79,27 @@ Single-crate Rust CLI. Source lives under `src/`, tests under `tests/` at the re
 
 ### Tests for User Story 2 (write first, ensure FAIL) ⚠️
 
-- [ ] T016 [P] [US2] Write integration test covering install from local path and from a Git URL fixture (per [contracts/cli-template-subcommands.md](./contracts/cli-template-subcommands.md) install section) in `tests/cli_template_install.rs`
-- [ ] T017 [P] [US2] Write integration test covering first-use prompt, re-prompt on version bump (`1.0.0` → `1.1.0`), and denial path (per FR-016) in `tests/cli_template_trust.rs`
-- [ ] T018 [P] [US2] Write integration test covering third-party template attempting `\write18` (FR-017 sandbox violation returns exit 5 with `SandboxError::ShellEscapeAttempted`) in `tests/cli_pipeline_sandbox.rs`
+- [X] T016 [P] [US2] `tests/cli_template_install.rs` — 10 tests covering local-path install, --force overwrite, missing manifest (exit 60), bare identifier rejection (exit 63), invalid version (exit 64), entrypoint escape (exit 65), non-.tex entrypoint (exit 67), install→list roundtrip, install→remove cleanup.
+- [X] T017 [P] [US2] `tests/cli_template_trust.rs` — 4 tests: non-TTY build against un-trusted install exits 70; template remove drops trust records; version bump forces re-prompt (exit 70); `template trust --revoke --version` scoped revoke.
+- [X] T018 [P] [US2] `tests/cli_pipeline_sandbox.rs` — 2 tests, both `requires_tectonic()`-gated: `\write18` in installed template is blocked (exit 40 or 92) AND the malicious side-effect file is absent; built-in compile still works without sandbox (regression check).
 
 ### Implementation for User Story 2
 
-- [ ] T019 [US2] Implement `Manifest::load(path)` per [contracts/manifest-schema.md](./contracts/manifest-schema.md) — TOML parse, all three required-field checks, identifier regex, `Version` parse, entrypoint escape / existence / `.tex` extension checks — in `src/templates.rs`
-- [ ] T020 [US2] Implement local-path install path in `src/install.rs` — copy source into `templates_dir()/<ns>/<name>/`, verify manifest post-copy, honor `--force` overwrite guard per Constitution V
-- [ ] T021 [US2] Implement Git-URL install path in `src/install.rs` — resolve `which("git")` (returns `InstallError::GitBinaryMissing` if absent), `git clone` into `tempfile::TempDir`, then delegate to the local-path installer
-- [ ] T022 [US2] Implement `TrustFile` load/save via `atomic::write_atomic` in `src/trust.rs`
-- [ ] T023 [US2] Implement `TrustFile::is_trusted(id, ver)` and `TrustFile::grant(id, ver)` in `src/trust.rs`
-- [ ] T024 [US2] Implement first-use trust prompt using `inquire::Confirm` (with the FR-017 sandbox summary as the prompt text) plus non-TTY refusal path (exit code 6) in `src/trust.rs`
-- [ ] T025 [US2] Extend `discovery::resolve()` with installed-template enumeration and the ambiguity error listing every candidate (per FR-018) in `src/discovery.rs`
-- [ ] T026 [US2] Implement `SandboxDirective::for_origin()` and the flag/env composition (`openout_any=p` env var, `--only-cached` arg, refuse `--shell-escape`) inside `src/compiler.rs`
-- [ ] T027 [US2] Grow `compiler::compile()` signature to accept a `SandboxDirective` and thread it through in `src/compiler.rs`; update the built-in call site in `src/build.rs` to pass the no-op directive
-- [ ] T028 [US2] Wire the trust check into the build pipeline (after discovery, before compile, only when `TemplateOrigin::Installed`) in `src/build.rs`
-- [ ] T029 [US2] Add `tex-cli template install <source> [--force]` subcommand definition and dispatcher in `src/cli.rs`
-- [ ] T030 [US2] Add `tex-cli template list [--json] [--include-builtin]` subcommand in `src/cli.rs`
-- [ ] T031 [US2] Add `tex-cli template remove <identifier> [--yes]` subcommand — deletes package dir and drops matching trust records — in `src/cli.rs`
-- [ ] T032 [US2] Add `tex-cli template trust <identifier> [--version <ver>] [--revoke]` subcommand in `src/cli.rs`
-- [ ] T033 [US2] Add interactive menu entries "Install a template", "List installed templates", "Remove a template", "Manage trust" wiring to the same dispatchers in `src/interactive.rs`
+- [X] T019 [US2] `Manifest`, `Manifest::load()`, `require_str()` in `src/templates.rs`: TOML parse, required-field checks, `Identifier::from_str` + third-party enforcement, `Version::from_str`, absolute-path rejection, parent-dir escape rejection, `.tex` extension check, existence check.
+- [X] T020 [US2] `install_from_local_path()` in `src/install.rs`: validate manifest → derive `<root>/<ns>/<name>/` → honor `--force` (or `InstallOverwrite` exit 53) → `copy_dir_recursive` (skips `.git/` and symlinks) → re-validate at destination. Plus `list_installed()`, `uninstall()` (best-effort prunes empty namespace dir).
+- [X] T021 [US2] `install_from_git()` in `src/install.rs`: `which("git")` gate (else `GitBinaryMissing` exit 50) → `git clone --depth 1` into tempdir → delegate to local-path installer.
+- [X] T022 [US2] `TrustFile` + `TrustRecord` + `TrustFile::load/save` in `src/trust.rs`. Save via `atomic::write_atomic` at mode 0o600. Missing file → default (empty). Corrupt TOML → `TrustFileCorrupted` (exit 71).
+- [X] T023 [US2] `TrustFile::is_trusted / grant / revoke_all / revoke_version` in `src/trust.rs`. Grant is idempotent; `approved_at` stored as Unix seconds (no new crate — see commit note re: RFC 3339 deferral).
+- [X] T024 [US2] `trust::ensure_trusted()` in `src/trust.rs`: skip if trusted; non-TTY → `TrustDenied` (exit 70); interactive → `inquire::Confirm` with FR-017 summary; refusal → `TrustDenied`; approval → grant + save.
+- [X] T025 [US2] `discovery::resolve()` already accepted `InstalledCandidate` (T010); Phase 4 now populates it via `install::list_installed()` from `build_pipeline_from_json`. Ambiguity + NoMatch variants emit populated candidate lists.
+- [X] T026 [US2] `SandboxDirective` struct + `for_builtin()` / `for_third_party()` constructors + `is_sandboxed()` in `src/compiler.rs`. (Adapted from the plan's `for_origin(&TemplateOrigin)` — the codebase has no `TemplateOrigin` enum; a boolean-shaped directive is cleaner.)
+- [X] T027 [US2] Introduced `compile_and_write_sandboxed` (new signature with `SandboxDirective` + optional identifier-for-errors); `compile_and_write` now delegates to it with `SandboxDirective::for_builtin()`, preserving every pre-007 call site unchanged. `run_engine` composes `--only-cached` (tectonic), `openout_any=p` env var, and never opts into `-shell-escape` when the directive is sandboxed. Log-tail signature detection maps to `SandboxShellEscapeAttempted` / `SandboxBundleMissing` when applicable.
+- [X] T028 [US2] `build_pipeline_from_json` in `src/build.rs` now enumerates installed via `install::list_installed`, resolves, and — for third-party matches — calls `trust::ensure_trusted` before dispatching to a new `build_pipeline_installed` helper that reads the manifest entrypoint, renders, and calls `compile_and_write_sandboxed` with `SandboxDirective::for_third_party()`.
+- [X] T029 [US2] `TemplateCmd::Install { source, force }` + `handle_template_install` in `src/cli.rs`. Dispatches on `install::looks_like_git_url(&source)`.
+- [X] T030 [US2] `TemplateCmd::List { json, include_builtin }` + `handle_template_list` — human table (IDENTIFIER/VERSION/TRUSTED/PATH) and structured `--json` output with a `"kind": "installed"|"builtin"` discriminator.
+- [X] T031 [US2] `TemplateCmd::Remove { identifier, yes }` + `handle_template_remove` — namespace validation, `inquire::Confirm` unless `--yes`, `install::uninstall`, then `TrustFile::revoke_all`.
+- [X] T032 [US2] `TemplateCmd::Trust { identifier, version, revoke }` + `handle_template_trust` — enumerates installed versions, per-version `Confirm` prompt for grant, immediate revoke without prompt.
+- [X] T033 [US2] Extended `TemplateMenuAction` in `src/interactive.rs` with `InstallThirdParty / ListInstalled / RemoveInstalled / ManageTrust`; the interactive `template_menu()` now surfaces built-in and third-party actions side-by-side, wired to the T029-T032 handlers from `handle_templates_menu` in `src/cli.rs`. Two new prompt helpers: `prompt_template_install_source`, `prompt_template_identifier`.
 
 **Checkpoint**: US2 is fully functional and testable independently — quickstart steps 2 through 6 pass end-to-end, including the ambiguity error in step 6.
 

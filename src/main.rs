@@ -3,7 +3,7 @@ use std::process::ExitCode;
 use clap::Parser;
 use tracing::Level;
 
-use tex_cli::cli::{Cli, Commands, ConfigCmd, TemplatesCmd};
+use tex_cli::cli::{Cli, Commands, ConfigCmd, TemplateCmd, TemplatesCmd};
 use tex_cli::errors::TexError;
 
 const BANNER: &str = include_str!("../assets/banner.txt");
@@ -28,6 +28,23 @@ fn main() -> ExitCode {
                 tex_cli::cli::handle_templates_remove(name, force)
             }
             None => tex_cli::cli::handle_templates_menu(),
+        },
+        Commands::Template(cmd) => match cmd {
+            TemplateCmd::Install { source, force } => {
+                tex_cli::cli::handle_template_install(source, force)
+            }
+            TemplateCmd::List {
+                json,
+                include_builtin,
+            } => tex_cli::cli::handle_template_list(json, include_builtin),
+            TemplateCmd::Remove { identifier, yes } => {
+                tex_cli::cli::handle_template_remove(identifier, yes)
+            }
+            TemplateCmd::Trust {
+                identifier,
+                version,
+                revoke,
+            } => tex_cli::cli::handle_template_trust(identifier, version, revoke),
         },
         Commands::Render(args) => tex_cli::cli::handle_render(args),
         Commands::Compile(args) => tex_cli::cli::handle_compile(args),
