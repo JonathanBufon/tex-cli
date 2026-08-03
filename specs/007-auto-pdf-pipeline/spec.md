@@ -159,7 +159,7 @@ Three decisions materially shape the scope, effort, and user experience of this 
 | C      | Library-only: unknown JSON is a hard error with a suggestion to author or extend a template. | Smallest scope, most predictable; leaves the first-run friction in place for anything outside the shipped library.              |
 | Custom | Provide your own answer                                                                      | E.g. "A for v1, B behind a flag later".                                                                                          |
 
-**Your choice**: _[Wait for user response]_
+**Your choice**: **C — Library-only**. Unknown JSON is a hard error with a suggestion to author or install a template. No auto-generation in v1. This collapses US2 (P2, auto-generated template for unknown shape) and FR-004/FR-012 (auto-template generation and rendering) out of v1 scope; the coverage promise shifts to the contribution SDK selected in Q3.
 
 ### Q2: Interaction model when a template is auto-generated
 
@@ -174,7 +174,7 @@ Three decisions materially shape the scope, effort, and user experience of this 
 | C      | Approval-required: generate → show template → wait for user to approve → compile.                               | Safest for high-stakes outputs (legal, financial); breaks the single-command vision.                                  |
 | Custom | Provide your own answer                                                                                         | E.g. "A by default, `--review` flag to switch to C".                                                                  |
 
-**Your choice**: _[Wait for user response]_
+**Your choice**: **C — Approval-required, reinterpreted for the SDK path**. Because Q1 = C removes auto-generation from v1, the "approval-required" model no longer applies to a generator loop. Instead, it applies to **templates installed via the contribution SDK selected in Q3**: before a third-party or freshly-installed template is used in a compile, the user must explicitly confirm/approve it (first-use trust prompt, or an equivalent one-time acknowledgement). Templates shipped in the built-in library are pre-trusted and require no approval.
 
 ### Q3: Scope of the shipped document-type library for v1
 
@@ -189,4 +189,4 @@ Three decisions materially shape the scope, effort, and user experience of this 
 | C      | Explicit non-goal: the library is open-ended and grows organically; ship a template SDK/schema for contributions. | Reframes the feature — auto-generation becomes secondary; distribution of user-contributed templates is now in scope. |
 | Custom | Provide your own answer                                                                                      |                                                                                                                       |
 
-**Your choice**: _[Wait for user response]_
+**Your choice**: **C — Open-ended library + contribution SDK**. Built-in library stays at `resume`, `artigo-basico`, `carta` for v1. The feature centrepiece becomes a **template SDK/schema** that lets third parties author, package, and distribute templates that `tex-cli` can discover and install. Auto-generation is explicitly out of v1 scope (per Q1). SC-006 (90% coverage) is re-anchored on "library + installable community templates" rather than on generator quality.
