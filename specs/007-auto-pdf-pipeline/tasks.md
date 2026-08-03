@@ -138,7 +138,7 @@ Single-crate Rust CLI. Source lives under `src/`, tests under `tests/` at the re
 ### Implementation for User Story 4
 
 - [ ] T039 [US4] Add missing-config detection at the entry of the build pipeline; on absent config, delegate to `config::create_default()` and log the path (FR-007) in `src/build.rs`
-- [ ] T040 [US4] Warm the Tectonic bundle cache during `tex-cli init` (existing subcommand) by running a no-op compile against a bundled fixture — enables all third-party compiles per research R1 cross-cutting note — in `src/config.rs` (or the init subcommand handler)
+- [ ] T040 [US4] Warm the Tectonic bundle cache during `tex-cli init` (existing subcommand) by running a no-op compile against `examples/templates/carta` (the smallest built-in — smallest bundle-cache footprint of the three A-04 templates) — enables all third-party compiles per research R1 cross-cutting note — in `src/config.rs` (or the init subcommand handler)
 
 **Checkpoint**: US4 is independently verifiable; a fresh-machine scenario produces a PDF with a single command.
 
@@ -153,6 +153,7 @@ Single-crate Rust CLI. Source lives under `src/`, tests under `tests/` at the re
 - [ ] T043 [P] Update `ROADMAP.md` marking spec 007 as delivered
 - [ ] T044 Run [quickstart.md](./quickstart.md) end-to-end inside the project Docker container per project convention; capture any deviations as follow-up issues
 - [ ] T045 Run `cargo fmt --all` and `cargo clippy --all-targets -- -D warnings`; fix or justify every diagnostic
+- [ ] T046 [P] Regression test asserting FR-009 / SC-007 — compile the same JSON twice against the same built-in template and assert byte-identical PDFs; then repeat against an installed template with a fixed version — in `tests/cli_pipeline_deterministic.rs`
 
 ---
 
@@ -188,7 +189,7 @@ Single-crate Rust CLI. Source lives under `src/`, tests under `tests/` at the re
 - **Phase 3 (US1)**: T008 in parallel with T009 while implementation lands
 - **Phase 4 (US2)**: T016, T017, T018 all in parallel; T019 and T022 can be in parallel (different files); install and trust modules parallel-safe until T028 wires them together
 - **Phase 5 (US3)**: T034 in parallel with T035/T036/T037
-- **Phase 7 Polish**: T041/T042/T043 all in parallel
+- **Phase 7 Polish**: T041/T042/T043/T046 all in parallel
 
 ---
 
