@@ -97,6 +97,12 @@ pub struct BuildArgs {
     /// Overwrite an existing PDF without confirming.
     #[arg(long)]
     pub force: bool,
+
+    /// Spec 007 US1: resolve the template from the JSON's `document.type`
+    /// or `document.template` field. Mutually exclusive with the positional
+    /// `template_name`. Value is a path to a JSON file, or `-` for stdin.
+    #[arg(long = "json", conflicts_with = "template_name")]
+    pub json: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]
@@ -450,6 +456,11 @@ pub fn handle_build(args: BuildArgs) -> Result<()> {
     let path = config_file_path()?;
     let cfg = Config::load(&path)?;
 
+    // Spec 007 US1 route: `--json <source>` — resolve template from the JSON.
+    if let Some(json_source) = args.json.as_deref() {
+        return handle_build_from_json(&cfg, &args, json_source);
+    }
+
     let (template_name, data_source) = match (&args.template_name, &args.data_source) {
         (Some(t), Some(d)) => (t.clone(), d.clone()),
         _ => return handle_build_menu(&cfg),
@@ -521,7 +532,94 @@ pub fn handle_build(args: BuildArgs) -> Result<()> {
     Ok(())
 }
 
+/// Spec 007 US1 (T012–T014): `tex-cli build --json <source>` — resolve
+/// the template from the JSON's `document.type` / `document.template`
+/// then delegate to the standard build pipeline.
+fn handle_build_from_json(cfg: &Config, args: &BuildArgs, json_source: &str) -> Result<()> {
+    use std::io::IsTerminal;
+
+    let engine = crate::compiler::resolve_engine(args.engine.as_deref(), &cfg.compiler.engine)?;
+
+    let keep_tex = if args.keep_tex {
+        true
+    } else if args.no_keep_tex {
+        false
+    } else {
+        cfg.compiler.keep_tex
+    };
+    let keep_logs = if args.keep_logs {
+        true
+    } else if args.no_keep_logs {
+        false
+    } else {
+        cfg.compiler.keep_logs
+    };
+
+    let output_override = args
+        .output
+        .as_ref()
+        .map(|p| crate::paths::expand_user_path(&p.display().to_string()))
+        .transpose()?;
+
+    // For the overwrite guard we need the resolved output path — but that
+    // depends on which template the resolver picks. Peek by resolving here
+    // first is expensive (loads JSON + enumerates templates twice). Simpler:
+    // let the pipeline resolve, then check overwrite only if a caller-provided
+    // --output was set (which is the only case we can pre-check without
+    // knowing the template name).
+    if let Some(target) = output_override.as_deref() {
+        if target.exists() && !args.force {
+            let confirmed = if std::io::stdin().is_terminal() {
+                confirm_compile_overwrite(target)?
+            } else {
+                eprintln!(
+                    "File {} already exists. Use --force or run in an interactive terminal.",
+                    target.display()
+                );
+                false
+            };
+            if !confirmed {
+                return Err(anyhow::Error::new(TexError::UserAborted));
+            }
+        }
+    }
+
+    let outcome = crate::build::build_pipeline_from_json(
+        cfg,
+        json_source,
+        output_override.as_deref(),
+        engine,
+        keep_tex,
+        keep_logs,
+        args.force,
+        0,
+    )?;
+
+    let secs = outcome.total_duration.as_secs_f32();
+    let template_desc = match &outcome.template_version {
+        Some(ver) => format!("{}@{}", outcome.template_identifier, ver),
+        None => outcome.template_identifier.to_string(),
+    };
+    if outcome.overwrote_existing {
+        println!(
+            "PDF generated (overwritten) at {}. Template: {}. Pipeline (render + compile) took {:.1}s.",
+            outcome.pdf_path.display(),
+            template_desc,
+            secs
+        );
+    } else {
+        println!(
+            "PDF generated at {}. Template: {}. Pipeline (render + compile) took {:.1}s.",
+            outcome.pdf_path.display(),
+            template_desc,
+            secs
+        );
+    }
+    Ok(())
+}
+
 fn handle_build_menu(cfg: &Config) -> Result<()> {
+    use inquire::Select;
     use std::io::IsTerminal;
 
     if !std::io::stdin().is_terminal() {
@@ -530,6 +628,46 @@ fn handle_build_menu(cfg: &Config) -> Result<()> {
         ));
     }
 
+    // Spec 007 T015 (Constitution III): the "JSON → resolve → PDF" flow
+    // is offered on equal footing with the explicit template+JSON flow.
+    let mode = Select::new(
+        "How do you want to build?",
+        vec![
+            "Compile a JSON to PDF (auto-resolve template from document.type)",
+            "Pick a template and JSON explicitly",
+        ],
+    )
+    .with_starting_cursor(0)
+    .prompt()
+    .map_err(|e| {
+        anyhow::Error::new(match e {
+            inquire::InquireError::OperationCanceled
+            | inquire::InquireError::OperationInterrupted => TexError::UserAborted,
+            other => TexError::Io(std::io::Error::other(other.to_string())),
+        })
+    })?;
+
+    if mode.starts_with("Compile a JSON to PDF") {
+        let json_source = prompt_json_source()?;
+        let keep_tex = confirm_keep_tex(cfg.compiler.keep_tex)?;
+        let keep_logs = confirm_keep_logs(cfg.compiler.keep_logs)?;
+
+        let args = BuildArgs {
+            template_name: None,
+            data_source: None,
+            output: None,
+            engine: None,
+            keep_tex,
+            no_keep_tex: !keep_tex,
+            keep_logs,
+            no_keep_logs: !keep_logs,
+            force: false,
+            json: Some(json_source),
+        };
+        return handle_build(args);
+    }
+
+    // Explicit path (unchanged pre-007 behaviour).
     let templates = list_templates(&cfg.paths.templates_dir)?;
     if templates.is_empty() {
         return Err(anyhow::Error::new(TexError::TemplatesDirMissing {
@@ -553,6 +691,7 @@ fn handle_build_menu(cfg: &Config) -> Result<()> {
         keep_logs,
         no_keep_logs: !keep_logs,
         force: false,
+        json: None,
     };
     handle_build(args)
 }

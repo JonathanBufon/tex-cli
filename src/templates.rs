@@ -7,6 +7,7 @@ use std::time::UNIX_EPOCH;
 
 use serde::Serialize;
 
+use crate::discovery::Identifier;
 use crate::errors::TexError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -301,6 +302,26 @@ pub fn remove_template(dir: &Path, name: &str, force: bool) -> Result<PathBuf, T
     })?;
 
     Ok(path)
+}
+
+/// Enumerate every built-in template in `dir` as a bare-name `Identifier`.
+///
+/// Any file whose stem is not a valid built-in identifier (uppercase,
+/// leading special char, …) is skipped with a warning; the pipeline keeps
+/// working with the remaining valid templates.
+pub fn list_builtin_identifiers(dir: &Path) -> Result<Vec<Identifier>, TexError> {
+    let templates = list_templates(dir)?;
+    let mut ids = Vec::with_capacity(templates.len());
+    for t in templates {
+        match Identifier::builtin(&t.name) {
+            Ok(id) => ids.push(id),
+            Err(_) => tracing::warn!(
+                name = %t.name,
+                "skipping built-in template with non-identifier name"
+            ),
+        }
+    }
+    Ok(ids)
 }
 
 pub fn read_template(dir: &Path, name: &str) -> Result<Vec<u8>, TexError> {

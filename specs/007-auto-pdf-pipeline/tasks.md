@@ -55,17 +55,17 @@ Single-crate Rust CLI. Source lives under `src/`, tests under `tests/` at the re
 
 ### Tests for User Story 1 (write first, ensure FAIL) ⚠️
 
-- [ ] T008 [P] [US1] Write integration test covering Case A of [contracts/json-document-fields.md](./contracts/json-document-fields.md) (built-in match by `document.type = "resume"`) in `tests/cli_pipeline_resolve.rs`
+- [X] T008 [P] [US1] Write integration test covering Case A of [contracts/json-document-fields.md](./contracts/json-document-fields.md) (built-in match by `document.type`) plus Case D (explicit override) and error paths (exit codes 80/81/82) in `tests/cli_pipeline_resolve.rs`. Uses `artigo`/`carta` as built-ins (per available fixtures — spec's `resume` example JSON needs a `resume.tex` template that's not yet shipped; deferred to a future polish task).
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Implement built-in template enumeration returning `Identifier` + `TemplateOrigin::BuiltIn { path }` for every template under `examples/templates/` in `src/templates.rs`
-- [ ] T010 [US1] Implement `discovery::resolve()` step 2 (built-in match on `document.type`) with the FR-018 precedence rule in `src/discovery.rs`
-- [ ] T011 [US1] Extend `Report` with `template_identifier: Identifier` and `template_version: Option<Version>` fields (per FR-010 rewrite) in `src/build.rs`
-- [ ] T012 [US1] Route `build --json <source>` through discovery → existing render → existing `compiler::compile` (no sandbox for built-in) in `src/build.rs`
-- [ ] T013 [US1] Add `--json <source>` argument (file path or `-` for stdin) to the existing `build` subcommand's `clap` definition in `src/cli.rs`
-- [ ] T014 [US1] Wire the `--json` branch to the new build pipeline in `src/main.rs`
-- [ ] T015 [US1] Add interactive menu entry "Compile a JSON to PDF" (prompts for JSON path via `inquire::Text`) in `src/interactive.rs`
+- [X] T009 [US1] Implement `templates::list_builtin_identifiers(dir)` in `src/templates.rs` — reuses existing `list_templates`, wraps each name in `Identifier::builtin`. Templates live in `cfg.paths.templates_dir` (the user's configured directory), which matches the constitution's "templates are static files" (II) and the existing spec-005 layout — no new directory needed for US1.
+- [X] T010 [US1] Implement `discovery::resolve()` with `ResolveInputs { builtins, installed }`, `ResolvedTemplate { identifier, version }`, FR-018 precedence (explicit override → built-in → installed), NoMatch/Ambiguous variants with populated candidate lists — in `src/discovery.rs`. Includes 6 unit tests for the resolver flow.
+- [X] T011 [US1] Extended `BuildOutcome` with `template_identifier: Identifier` and `template_version: Option<Version>` fields in `src/build.rs`; `build_pipeline` populates `template_identifier` from the passed `template_name` (built-in) so existing callers work unchanged.
+- [X] T012 [US1] `build_pipeline_from_json()` in `src/build.rs` — loads JSON, enumerates built-ins, resolves, delegates to `build_pipeline`, overwrites the outcome's identifier/version with the resolver's typed values. No sandbox (no installed templates in US1).
+- [X] T013 [US1] Added `--json <source>` to `BuildArgs` with `conflicts_with = "template_name"` in `src/cli.rs`.
+- [X] T014 [US1] `handle_build` in `src/cli.rs` dispatches to `handle_build_from_json` when `--json` is set. `main.rs` unchanged — it already dispatches through `handle_build`.
+- [X] T015 [US1] Interactive `handle_build_menu` in `src/cli.rs` now begins with a `Select` between "Compile a JSON to PDF (auto-resolve)" and "Pick a template and JSON explicitly", satisfying Constitution III (dual CLI + interactive on equal footing).
 
 **Checkpoint**: US1 is fully functional and testable independently — the quickstart step 1 passes end-to-end. Ship-ready MVP for anyone using only built-in templates.
 

@@ -4,7 +4,9 @@ use std::time::{Duration, Instant};
 
 use crate::compiler::{self, SupportedEngine};
 use crate::config::Config;
+use crate::discovery::{self, Identifier, ResolveInputs};
 use crate::errors::TexError;
+use crate::templates::Version;
 use crate::{atomic, render, templates};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -18,6 +20,11 @@ pub struct BuildOutcome {
     pub kept_tex: bool,
     pub kept_logs: bool,
     pub intermediate_tex_path: Option<PathBuf>,
+    /// Identifier of the template used — bare name for built-in, `namespace/name`
+    /// for installed third-party (populated by Phase 4). Spec 007 FR-010.
+    pub template_identifier: Identifier,
+    /// Version of the template used — `None` for built-in, `Some` for installed.
+    pub template_version: Option<Version>,
 }
 
 pub fn resolve_output_pdf(cfg: &Config, template_name: &str, output: Option<&Path>) -> PathBuf {
@@ -101,6 +108,12 @@ pub fn build_pipeline(
     let compile_duration = start_compile.elapsed();
     tracing::info!("Compile finished in {:.2}s", compile_duration.as_secs_f32());
 
+    let template_identifier = Identifier::builtin(strip_tex_suffix(template_name))
+        .map_err(|_| TexError::TemplateNotFound {
+            name: template_name.to_string(),
+            templates_dir: cfg.paths.templates_dir.clone(),
+        })?;
+
     Ok(BuildOutcome {
         pdf_path: output_pdf.to_path_buf(),
         total_duration: start_total.elapsed(),
@@ -111,7 +124,70 @@ pub fn build_pipeline(
         kept_tex: keep_tex,
         kept_logs: keep_logs,
         intermediate_tex_path,
+        template_identifier,
+        template_version: None,
     })
+}
+
+fn strip_tex_suffix(name: &str) -> &str {
+    name.strip_suffix(".tex").unwrap_or(name)
+}
+
+/// Spec 007 US1 entry point: read JSON, resolve the template via
+/// [`discovery::resolve`], then delegate to [`build_pipeline`].
+///
+/// US2 (installed templates + trust prompt + sandbox) extends this
+/// function in Phase 4 by (a) enumerating installed templates for
+/// `ResolveInputs::installed`, (b) intercepting third-party matches to
+/// check the trust file before compile, and (c) passing a sandbox
+/// directive through the compiler.
+#[allow(clippy::too_many_arguments)]
+pub fn build_pipeline_from_json(
+    cfg: &Config,
+    json_source: &str,
+    output_override: Option<&Path>,
+    engine: SupportedEngine,
+    keep_tex: bool,
+    keep_logs: bool,
+    force: bool,
+    verbose: u8,
+) -> Result<BuildOutcome, TexError> {
+    let json = render::load_json_source(json_source)?;
+    let builtins = templates::list_builtin_identifiers(&cfg.paths.templates_dir)?;
+    let installed = Vec::new(); // Phase 4 populates this.
+    let resolved = discovery::resolve(
+        &json,
+        ResolveInputs {
+            builtins: &builtins,
+            installed: &installed,
+        },
+    )?;
+
+    let template_name = resolved.identifier.name.clone();
+    let output_pdf = match output_override {
+        Some(p) => p.to_path_buf(),
+        None => resolve_output_pdf(cfg, &template_name, None),
+    };
+
+    // Delegate. The delegated pipeline re-parses the JSON — accepted cost
+    // (~milliseconds); avoids branching the render/compile core.
+    let mut outcome = build_pipeline(
+        cfg,
+        &template_name,
+        json_source,
+        &output_pdf,
+        engine,
+        keep_tex,
+        keep_logs,
+        force,
+        verbose,
+    )?;
+
+    // Overwrite the identifier with the fully-formed one from the resolver
+    // (namespace preserved for future third-party path; None version for built-in).
+    outcome.template_identifier = resolved.identifier;
+    outcome.template_version = resolved.version;
+    Ok(outcome)
 }
 
 #[cfg(test)]
