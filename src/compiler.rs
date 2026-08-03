@@ -137,8 +137,21 @@ pub fn run_engine(
     if sandbox.only_cached_bundle && matches!(engine, SupportedEngine::Tectonic) {
         args.push("--only-cached".to_string());
     }
+    // Spec 007 FR-017: tectonic's first-class untrusted-input switch.
+    // Documented as "disable all known-insecure features" — the cleanest
+    // way to honor the sandbox intent without depending on external
+    // KPathsea env vars behaving under tectonic's bundled setup.
+    if sandbox.disable_shell_escape && matches!(engine, SupportedEngine::Tectonic) {
+        args.push("--untrusted".to_string());
+    }
     let mut cmd = Command::new(engine.binary_name());
     cmd.current_dir(cwd).args(&args);
+    // Spec 007 FR-009 / SC-007: force a fixed build timestamp so tectonic
+    // (and any other reproducible-build-aware engine) writes a
+    // byte-identical PDF for the same input on repeat compiles. The
+    // industry convention is the SOURCE_DATE_EPOCH env var; 1 is used
+    // rather than 0 because some tooling treats 0 as "unset".
+    cmd.env("SOURCE_DATE_EPOCH", "1");
     if sandbox.paranoid_openout {
         // KPathsea paranoid mode: prevents \openout escapes on engines that
         // honor the env var (tectonic passes it through to its bundled

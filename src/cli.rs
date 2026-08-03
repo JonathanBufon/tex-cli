@@ -363,7 +363,6 @@ fn warm_tectonic_bundle_cache() {
 
     eprintln!("Warming Tectonic bundle cache (one-time; may take ~30s)...");
     let status = std::process::Command::new("tectonic")
-        .args(["--keep-intermediates=false", "--keep-logs=false"])
         .arg(&tex_path)
         .current_dir(tmp.path())
         .stdout(std::process::Stdio::null())

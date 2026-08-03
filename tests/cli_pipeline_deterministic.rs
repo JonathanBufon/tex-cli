@@ -24,30 +24,28 @@ fn base_cmd(home: &TempDir) -> Command {
     cmd
 }
 
+/// Initialise the config via `tex-cli init` (rather than writing the TOML
+/// by hand) so the Tectonic bundle-cache warm-up runs — the sandboxed
+/// installed-template compile below uses `--only-cached` and would fail
+/// with `SandboxBundleMissing` on a cold isolated cache.
 fn write_config(home: &TempDir) -> (PathBuf, PathBuf) {
     let templates = home.path().join("t");
     let output = home.path().join("out");
-    let cfg_path = home.path().join(".config").join("tex").join("config.toml");
-    std::fs::create_dir_all(cfg_path.parent().unwrap()).unwrap();
     std::fs::create_dir_all(&templates).unwrap();
     std::fs::create_dir_all(&output).unwrap();
-    let body = format!(
-        r#"[paths]
-templates_dir = "{}"
-output_dir = "{}"
-
-[compiler]
-engine = "tectonic"
-keep_tex = false
-keep_logs = false
-
-[behavior]
-ask_output_path_every_time = false
-"#,
-        templates.display(),
-        output.display()
-    );
-    std::fs::write(&cfg_path, body).unwrap();
+    base_cmd(home)
+        .args([
+            "init",
+            "--templates-dir",
+            templates.to_str().unwrap(),
+            "--output-dir",
+            output.to_str().unwrap(),
+            "--engine",
+            "tectonic",
+            "--create-dirs",
+        ])
+        .assert()
+        .success();
     (templates, output)
 }
 
