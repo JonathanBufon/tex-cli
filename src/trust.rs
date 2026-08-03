@@ -127,11 +127,7 @@ impl TrustFile {
 /// * If the user answers "no" at the `inquire::Confirm` → returns
 ///   `TexError::TrustDenied`.
 /// * On approval, the record is granted and persisted to `trust_path`.
-pub fn ensure_trusted(
-    trust_path: &Path,
-    id: &Identifier,
-    ver: &Version,
-) -> Result<(), TexError> {
+pub fn ensure_trusted(trust_path: &Path, id: &Identifier, ver: &Version) -> Result<(), TexError> {
     let mut file = TrustFile::load(trust_path)?;
     if file.is_trusted(id, ver) {
         return Ok(());
@@ -175,7 +171,10 @@ pub fn is_trusted(trust_path: &Path, id: &Identifier, ver: &Version) -> bool {
 
 /// Testing helper — build a canonical trust-file path under a `HOME` dir.
 pub fn trust_file_under(home: &Path) -> PathBuf {
-    home.join(".local").join("share").join("tex").join("trust.toml")
+    home.join(".local")
+        .join("share")
+        .join("tex")
+        .join("trust.toml")
 }
 
 #[cfg(test)]

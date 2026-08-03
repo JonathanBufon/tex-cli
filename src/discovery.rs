@@ -154,10 +154,9 @@ pub fn resolve(
 
     // 1. Explicit override.
     if let Some(raw) = doc.and_then(|d| d.get("template")).and_then(|t| t.as_str()) {
-        let requested: Identifier =
-            raw.parse().map_err(|_| TexError::ExplicitTemplateMissing {
-                requested: raw.to_string(),
-            })?;
+        let requested: Identifier = raw.parse().map_err(|_| TexError::ExplicitTemplateMissing {
+            requested: raw.to_string(),
+        })?;
         return resolve_explicit(&requested, raw, &inputs);
     }
 
@@ -187,10 +186,7 @@ fn resolve_explicit(
         });
     }
     // Third-party — match against installed.
-    let hit = inputs
-        .installed
-        .iter()
-        .find(|c| c.identifier == requested);
+    let hit = inputs.installed.iter().find(|c| c.identifier == requested);
     match hit {
         Some(c) => Ok(ResolvedTemplate {
             identifier: c.identifier.clone(),
@@ -223,9 +219,7 @@ fn resolve_by_type(
     let mut matches: Vec<&InstalledCandidate<'_>> = inputs
         .installed
         .iter()
-        .filter(|c| {
-            c.identifier.name == doc_type || c.identifier.to_string() == doc_type
-        })
+        .filter(|c| c.identifier.name == doc_type || c.identifier.to_string() == doc_type)
         .collect();
 
     match matches.len() {
@@ -332,7 +326,10 @@ mod tests {
     // ---- resolve() tests (US1 — no installed templates yet) ----
 
     fn builtins(names: &[&str]) -> Vec<Identifier> {
-        names.iter().map(|n| Identifier::builtin(*n).unwrap()).collect()
+        names
+            .iter()
+            .map(|n| Identifier::builtin(*n).unwrap())
+            .collect()
     }
 
     fn no_installed<'a>() -> Vec<InstalledCandidate<'a>> {
@@ -344,7 +341,10 @@ mod tests {
         let bs = builtins(&["resume", "artigo-basico"]);
         let installed = no_installed();
         let json = json!({ "document": { "type": "resume" } });
-        let inputs = ResolveInputs { builtins: &bs, installed: &installed };
+        let inputs = ResolveInputs {
+            builtins: &bs,
+            installed: &installed,
+        };
         let out = resolve(&json, inputs).unwrap();
         assert_eq!(out.identifier.name, "resume");
         assert!(out.identifier.is_builtin());
@@ -357,7 +357,10 @@ mod tests {
         let installed = no_installed();
         // document.type says one thing, document.template overrides.
         let json = json!({ "document": { "type": "resume", "template": "artigo-basico" } });
-        let inputs = ResolveInputs { builtins: &bs, installed: &installed };
+        let inputs = ResolveInputs {
+            builtins: &bs,
+            installed: &installed,
+        };
         let out = resolve(&json, inputs).unwrap();
         assert_eq!(out.identifier.name, "artigo-basico");
     }
@@ -367,7 +370,10 @@ mod tests {
         let bs = builtins(&["resume"]);
         let installed = no_installed();
         let json = json!({ "sections": [] });
-        let inputs = ResolveInputs { builtins: &bs, installed: &installed };
+        let inputs = ResolveInputs {
+            builtins: &bs,
+            installed: &installed,
+        };
         let err = resolve(&json, inputs).unwrap_err();
         assert!(matches!(err, TexError::MissingTypeField));
     }
@@ -377,10 +383,16 @@ mod tests {
         let bs = builtins(&["resume"]);
         let installed = no_installed();
         let json = json!({ "document": { "type": "invoice" } });
-        let inputs = ResolveInputs { builtins: &bs, installed: &installed };
+        let inputs = ResolveInputs {
+            builtins: &bs,
+            installed: &installed,
+        };
         let err = resolve(&json, inputs).unwrap_err();
         match err {
-            TexError::NoTemplateMatch { requested, candidates } => {
+            TexError::NoTemplateMatch {
+                requested,
+                candidates,
+            } => {
                 assert_eq!(requested, "invoice");
                 assert!(candidates.contains(&"resume".to_string()));
             }
@@ -393,7 +405,10 @@ mod tests {
         let bs = builtins(&["resume"]);
         let installed = no_installed();
         let json = json!({ "document": { "template": "unknown-template" } });
-        let inputs = ResolveInputs { builtins: &bs, installed: &installed };
+        let inputs = ResolveInputs {
+            builtins: &bs,
+            installed: &installed,
+        };
         let err = resolve(&json, inputs).unwrap_err();
         match err {
             TexError::ExplicitTemplateMissing { requested } => {
@@ -409,7 +424,10 @@ mod tests {
         let bs = builtins(&["resume"]);
         let installed = no_installed();
         let json = json!({ "document": { "template": "acme/invoice" } });
-        let inputs = ResolveInputs { builtins: &bs, installed: &installed };
+        let inputs = ResolveInputs {
+            builtins: &bs,
+            installed: &installed,
+        };
         let err = resolve(&json, inputs).unwrap_err();
         assert!(matches!(err, TexError::ExplicitTemplateMissing { .. }));
     }

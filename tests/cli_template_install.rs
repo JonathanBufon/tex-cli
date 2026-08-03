@@ -53,9 +53,7 @@ fn install_from_local_path_succeeds_and_prints_dest() {
         .stdout(predicate::str::contains("acme/invoice"));
 
     // Layout on disk matches R5.
-    let dest = home
-        .path()
-        .join(".local/share/tex/templates/acme/invoice");
+    let dest = home.path().join(".local/share/tex/templates/acme/invoice");
     assert!(dest.join("tex-template.toml").exists());
     assert!(dest.join("template.tex").exists());
 }
@@ -204,8 +202,6 @@ fn install_then_remove_deletes_the_package_dir() {
         .assert()
         .success();
 
-    let dest = home
-        .path()
-        .join(".local/share/tex/templates/acme/invoice");
+    let dest = home.path().join(".local/share/tex/templates/acme/invoice");
     assert!(!dest.exists());
 }

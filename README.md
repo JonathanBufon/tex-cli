@@ -226,6 +226,64 @@ Important contracts:
   keep_tex/keep_logs; outside a TTY it delegates to exit 1 pointing
   to the direct CLI.
 
+### JSON → PDF auto-pipeline (`build --json`) — spec 007
+
+The `--json` flag turns `build` into a one-command pipeline: point at a
+JSON and `tex-cli` picks the template automatically (from the JSON's
+`document.type` or `document.template` field), renders, and compiles.
+No template name required.
+
+```bash
+tex-cli build --json data.json                       # auto-resolve + compile
+tex-cli build --json -                               # JSON via stdin
+tex-cli build --json data.json --output my.pdf       # custom PDF path
+```
+
+Resolution rules (see [`specs/007-auto-pdf-pipeline/contracts/json-document-fields.md`](specs/007-auto-pdf-pipeline/contracts/json-document-fields.md)):
+
+- `document.template = "acme/invoice"` explicit → wins.
+- `document.type = "resume"` → matches a built-in with that name.
+- `document.type = "invoice"` with no built-in → checks installed
+  third-party templates (see below); errors with a candidate list on
+  no or ambiguous match.
+
+Zero-config: on a fresh machine with no `~/.config/tex/config.toml`,
+`build --json` bootstraps a default config at the canonical XDG path
+and prints where it landed — no separate `init` needed.
+
+### Installable third-party templates (`template …`) — spec 007
+
+`tex-cli template` manages a per-user library of installable third-party
+templates. Packages ship a `tex-template.toml` manifest declaring
+`identifier` (`namespace/name`), `version` (semver), and `entrypoint`
+(the `.tex` file inside the package). See
+[`specs/007-auto-pdf-pipeline/contracts/manifest-schema.md`](specs/007-auto-pdf-pipeline/contracts/manifest-schema.md).
+
+```bash
+tex-cli template install <git-url|path>          # install from git or filesystem
+tex-cli template install <path> --force          # overwrite existing install
+tex-cli template list                            # list installed packages
+tex-cli template list --json                     # structured output for scripting
+tex-cli template list --include-builtin          # also show built-in library
+tex-cli template remove <namespace/name> --yes   # uninstall + drop trust records
+tex-cli template trust <namespace/name>          # grant trust for all versions
+tex-cli template trust <namespace/name> \
+    --version 1.2.0 --revoke                     # revoke a specific version
+```
+
+Security model:
+
+- **Trust prompt** — installed third-party templates require explicit
+  approval per `(identifier, version)` pair before their first compile.
+  Version bumps re-prompt. Non-TTY invocations exit 70 with a message
+  pointing at `tex-cli template trust`.
+- **Sandbox** — third-party template compiles run with `\write18`
+  disabled, `--only-cached` (no network fetch), and `openout_any=p`
+  (KPathsea paranoid mode). Built-in templates are exempt.
+
+Full walkthrough:
+[`specs/007-auto-pdf-pipeline/quickstart.md`](specs/007-auto-pdf-pipeline/quickstart.md).
+
 ### Verbosity
 
 Repeatable global `-v` flag on any subcommand:
@@ -259,6 +317,28 @@ Logs always go to stderr; stdout stays clean for pipes.
 | 40     | LaTeX engine failure during `compile` (log tail on stderr)          |
 | 41     | LaTeX engine not installed on PATH                                  |
 | 42     | Unsupported engine (outside tectonic/latexmk/pdflatex/xelatex/lualatex) |
+| **Spec 007 additions** |                                                         |
+| 50     | `git` binary not found on PATH (`template install <url>`)           |
+| 51     | `git clone` failed during install                                   |
+| 52     | Installed layout / manifest mismatch                                |
+| 53     | Install refused overwrite (use `--force`)                           |
+| 60     | Template manifest not found (`tex-template.toml` missing)           |
+| 61     | Manifest not valid TOML                                             |
+| 62     | Manifest missing a required field                                   |
+| 63     | Invalid identifier in manifest (must be `namespace/name`)           |
+| 64     | Invalid version in manifest (must be semver)                        |
+| 65     | Manifest entrypoint escapes the package root                        |
+| 66     | Manifest entrypoint file missing                                    |
+| 67     | Manifest entrypoint does not end in `.tex`                          |
+| 70     | Trust denied for an installed third-party template                  |
+| 71     | Trust file corrupted (`~/.local/share/tex/trust.toml`)              |
+| 80     | JSON has no `document.type` / `document.template`                   |
+| 81     | Explicit `document.template` does not match anything installed      |
+| 82     | `document.type` matched no template (`build --json`)                |
+| 83     | `document.type` matched multiple installed templates (ambiguous)    |
+| 90     | Sandboxed compile attempted filesystem write outside output dir     |
+| 91     | Tectonic bundle cache missing (run `tex-cli init` to warm)          |
+| 92     | Sandboxed compile attempted `\write18` (shell escape denied)        |
 
 ## Development
 

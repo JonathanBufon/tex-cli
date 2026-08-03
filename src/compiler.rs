@@ -307,33 +307,31 @@ pub fn compile_and_write_sandboxed(
     fs::copy(tex_path, &temp_tex)?;
 
     let start = Instant::now();
-    run_engine(engine, temp.path(), &tex_filename, verbose, sandbox).map_err(
-        |(_, log_tail)| {
-            // Detect canonical sandbox-violation signatures in the log tail
-            // and surface them as spec-007 SandboxError variants (FR-017).
-            if sandbox.is_sandboxed() {
-                if let Some(id) = identifier_for_errors {
-                    let lower = log_tail.to_ascii_lowercase();
-                    if lower.contains("write18")
-                        || lower.contains("shell escape")
-                        || lower.contains("shell-escape")
-                    {
-                        return TexError::SandboxShellEscapeAttempted {
-                            identifier: id.to_string(),
-                        };
-                    }
-                    if lower.contains("cache") && lower.contains("bundle") {
-                        return TexError::SandboxBundleMissing;
-                    }
+    run_engine(engine, temp.path(), &tex_filename, verbose, sandbox).map_err(|(_, log_tail)| {
+        // Detect canonical sandbox-violation signatures in the log tail
+        // and surface them as spec-007 SandboxError variants (FR-017).
+        if sandbox.is_sandboxed() {
+            if let Some(id) = identifier_for_errors {
+                let lower = log_tail.to_ascii_lowercase();
+                if lower.contains("write18")
+                    || lower.contains("shell escape")
+                    || lower.contains("shell-escape")
+                {
+                    return TexError::SandboxShellEscapeAttempted {
+                        identifier: id.to_string(),
+                    };
+                }
+                if lower.contains("cache") && lower.contains("bundle") {
+                    return TexError::SandboxBundleMissing;
                 }
             }
-            TexError::CompileFailed {
-                engine: engine.to_string(),
-                tex_path: tex_path.to_path_buf(),
-                log_tail,
-            }
-        },
-    )?;
+        }
+        TexError::CompileFailed {
+            engine: engine.to_string(),
+            tex_path: tex_path.to_path_buf(),
+            log_tail,
+        }
+    })?;
     let duration = start.elapsed();
 
     let overwrote_existing = output_pdf.exists();

@@ -153,12 +153,13 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), TexError> {
 /// Remove an installed template — deletes `<templates_root>/<ns>/<name>/`
 /// and any empty parent namespace dir. Returns the path that was removed.
 pub fn uninstall(identifier: &Identifier, templates_root: &Path) -> Result<PathBuf, TexError> {
-    let namespace = identifier
-        .namespace
-        .as_deref()
-        .ok_or_else(|| TexError::ExplicitTemplateMissing {
-            requested: identifier.to_string(),
-        })?;
+    let namespace =
+        identifier
+            .namespace
+            .as_deref()
+            .ok_or_else(|| TexError::ExplicitTemplateMissing {
+                requested: identifier.to_string(),
+            })?;
     let dest_dir = templates_root.join(namespace).join(&identifier.name);
     if !dest_dir.exists() {
         return Err(TexError::ExplicitTemplateMissing {

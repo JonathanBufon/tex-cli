@@ -96,9 +96,18 @@ impl FromStr for Version {
         };
 
         let mut parts = core.split('.');
-        let major = parts.next().and_then(|s| s.parse::<u32>().ok()).ok_or(err())?;
-        let minor = parts.next().and_then(|s| s.parse::<u32>().ok()).ok_or(err())?;
-        let patch = parts.next().and_then(|s| s.parse::<u32>().ok()).ok_or(err())?;
+        let major = parts
+            .next()
+            .and_then(|s| s.parse::<u32>().ok())
+            .ok_or(err())?;
+        let minor = parts
+            .next()
+            .and_then(|s| s.parse::<u32>().ok())
+            .ok_or(err())?;
+        let patch = parts
+            .next()
+            .and_then(|s| s.parse::<u32>().ok())
+            .ok_or(err())?;
         if parts.next().is_some() {
             return Err(err());
         }
@@ -117,10 +126,7 @@ impl FromStr for Version {
 fn is_dot_ident(s: &str) -> bool {
     !s.is_empty()
         && s.split('.').all(|seg| {
-            !seg.is_empty()
-                && seg
-                    .chars()
-                    .all(|c| c.is_ascii_alphanumeric() || c == '-')
+            !seg.is_empty() && seg.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
         })
 }
 
@@ -401,22 +407,24 @@ impl Manifest {
         let version_raw = require_str(&table, "version", &manifest_path)?;
         let entrypoint_raw = require_str(&table, "entrypoint", &manifest_path)?;
 
-        let identifier: Identifier = identifier_raw
-            .parse()
-            .map_err(|_| TexError::ManifestInvalidIdentifier {
-                value: identifier_raw.clone(),
-            })?;
+        let identifier: Identifier =
+            identifier_raw
+                .parse()
+                .map_err(|_| TexError::ManifestInvalidIdentifier {
+                    value: identifier_raw.clone(),
+                })?;
         // Third-party manifests MUST declare a namespace (FR-018/FR-019).
         if !identifier.is_third_party() {
             return Err(TexError::ManifestInvalidIdentifier {
                 value: identifier_raw,
             });
         }
-        let version: Version = version_raw
-            .parse()
-            .map_err(|_| TexError::ManifestInvalidVersion {
-                value: version_raw.clone(),
-            })?;
+        let version: Version =
+            version_raw
+                .parse()
+                .map_err(|_| TexError::ManifestInvalidVersion {
+                    value: version_raw.clone(),
+                })?;
 
         let entrypoint = PathBuf::from(&entrypoint_raw);
         if entrypoint.is_absolute() {

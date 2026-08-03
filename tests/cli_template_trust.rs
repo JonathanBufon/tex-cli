@@ -177,12 +177,7 @@ approved_at = 0
     // Bump to 1.1.0 via --force reinstall.
     let src_2 = seed_package(home.path(), "acme/invoice", "1.1.0");
     base_cmd(&home)
-        .args([
-            "template",
-            "install",
-            src_2.to_str().unwrap(),
-            "--force",
-        ])
+        .args(["template", "install", src_2.to_str().unwrap(), "--force"])
         .assert()
         .success();
 

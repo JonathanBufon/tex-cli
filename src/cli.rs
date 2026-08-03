@@ -336,7 +336,8 @@ pub fn handle_init(args: InitArgs) -> Result<()> {
 fn warm_tectonic_bundle_cache() {
     // Minimal well-formed LaTeX — no non-ASCII, no fancy packages, so the
     // fixture stays stable across LaTeX distributions and Tectonic versions.
-    const INIT_FIXTURE_TEX: &str = "\\documentclass{article}\n\\begin{document}\nInit OK.\n\\end{document}\n";
+    const INIT_FIXTURE_TEX: &str =
+        "\\documentclass{article}\n\\begin{document}\nInit OK.\n\\end{document}\n";
 
     if which::which("tectonic").is_err() {
         eprintln!(
@@ -670,10 +671,7 @@ fn bootstrap_default_config(path: &std::path::Path) -> Result<Config> {
         "note: no config found — created default at {}",
         path.display()
     );
-    eprintln!(
-        "      templates_dir: {}",
-        cfg.paths.templates_dir.display()
-    );
+    eprintln!("      templates_dir: {}", cfg.paths.templates_dir.display());
     eprintln!(
         "      output_dir:    {} (current working directory)",
         cfg.paths.output_dir.display()
@@ -1191,9 +1189,7 @@ pub fn handle_template_list(json: bool, include_builtin: bool) -> Result<()> {
 
     if installed.is_empty() && !include_builtin {
         println!("No installed third-party templates.");
-        println!(
-            "Install one with: tex-cli template install <git-url|path>"
-        );
+        println!("Install one with: tex-cli template install <git-url|path>");
         return Ok(());
     }
 
@@ -1227,11 +1223,12 @@ pub fn handle_template_list(json: bool, include_builtin: bool) -> Result<()> {
 pub fn handle_template_remove(identifier: String, yes: bool) -> Result<()> {
     use std::io::IsTerminal;
 
-    let id: crate::discovery::Identifier = identifier
-        .parse()
-        .map_err(|_| TexError::ManifestInvalidIdentifier {
-            value: identifier.clone(),
-        })?;
+    let id: crate::discovery::Identifier =
+        identifier
+            .parse()
+            .map_err(|_| TexError::ManifestInvalidIdentifier {
+                value: identifier.clone(),
+            })?;
     if !id.is_third_party() {
         return Err(anyhow::Error::new(TexError::ManifestInvalidIdentifier {
             value: identifier,
@@ -1241,9 +1238,7 @@ pub fn handle_template_remove(identifier: String, yes: bool) -> Result<()> {
 
     if !yes {
         if !std::io::stdin().is_terminal() {
-            eprintln!(
-                "Refusing to remove '{id}' without --yes in a non-interactive context."
-            );
+            eprintln!("Refusing to remove '{id}' without --yes in a non-interactive context.");
             return Err(anyhow::Error::new(TexError::UserAborted));
         }
         let confirmed = inquire::Confirm::new(&format!(
@@ -1282,11 +1277,12 @@ pub fn handle_template_trust(
 ) -> Result<()> {
     use std::io::IsTerminal;
 
-    let id: crate::discovery::Identifier = identifier
-        .parse()
-        .map_err(|_| TexError::ManifestInvalidIdentifier {
-            value: identifier.clone(),
-        })?;
+    let id: crate::discovery::Identifier =
+        identifier
+            .parse()
+            .map_err(|_| TexError::ManifestInvalidIdentifier {
+                value: identifier.clone(),
+            })?;
     if !id.is_third_party() {
         return Err(anyhow::Error::new(TexError::ManifestInvalidIdentifier {
             value: identifier,
@@ -1309,9 +1305,11 @@ pub fn handle_template_trust(
     let target_versions: Vec<crate::templates::Version> = match &version {
         Some(v_raw) => {
             let v: crate::templates::Version =
-                v_raw.parse().map_err(|_| TexError::ManifestInvalidVersion {
-                    value: v_raw.clone(),
-                })?;
+                v_raw
+                    .parse()
+                    .map_err(|_| TexError::ManifestInvalidVersion {
+                        value: v_raw.clone(),
+                    })?;
             vec![v]
         }
         None => installed.iter().map(|p| p.version.clone()).collect(),

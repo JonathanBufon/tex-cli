@@ -109,10 +109,12 @@ pub fn build_pipeline(
     let compile_duration = start_compile.elapsed();
     tracing::info!("Compile finished in {:.2}s", compile_duration.as_secs_f32());
 
-    let template_identifier = Identifier::builtin(strip_tex_suffix(template_name))
-        .map_err(|_| TexError::TemplateNotFound {
-            name: template_name.to_string(),
-            templates_dir: cfg.paths.templates_dir.clone(),
+    let template_identifier =
+        Identifier::builtin(strip_tex_suffix(template_name)).map_err(|_| {
+            TexError::TemplateNotFound {
+                name: template_name.to_string(),
+                templates_dir: cfg.paths.templates_dir.clone(),
+            }
         })?;
 
     Ok(BuildOutcome {

@@ -317,12 +317,7 @@ mod tests {
 
     #[test]
     fn render_template_escapes_all_ten_specials() {
-        let out = render_template(
-            "test",
-            "{{ x }}",
-            &json!({"x":"& % $ # _ { } \\ ~ ^"}),
-        )
-        .unwrap();
+        let out = render_template("test", "{{ x }}", &json!({"x":"& % $ # _ { } \\ ~ ^"})).unwrap();
         assert_eq!(
             out,
             r"\& \% \$ \# \_ \{ \} \textbackslash{} \textasciitilde{} \textasciicircum{}"
@@ -331,8 +326,7 @@ mod tests {
 
     #[test]
     fn render_template_substitutes_em_dash_and_reports() {
-        let (out, warnings) =
-            render_template_safe("test", "{{ x }}", &json!({"x":"a—b"})).unwrap();
+        let (out, warnings) = render_template_safe("test", "{{ x }}", &json!({"x":"a—b"})).unwrap();
         assert_eq!(out, "a---b");
         assert_eq!(warnings.len(), 1);
         assert_eq!(warnings[0].original, '—');
@@ -342,8 +336,7 @@ mod tests {
 
     #[test]
     fn render_template_substitutes_en_dash_and_reports() {
-        let (out, warnings) =
-            render_template_safe("test", "{{ x }}", &json!({"x":"a–b"})).unwrap();
+        let (out, warnings) = render_template_safe("test", "{{ x }}", &json!({"x":"a–b"})).unwrap();
         assert_eq!(out, "a--b");
         assert_eq!(warnings.len(), 1);
         assert_eq!(warnings[0].original, '–');
@@ -365,12 +358,8 @@ mod tests {
 
     #[test]
     fn render_template_no_warnings_when_no_substitutions_needed() {
-        let (_out, warnings) = render_template_safe(
-            "test",
-            "{{ x }}",
-            &json!({"x":"just plain ascii"}),
-        )
-        .unwrap();
+        let (_out, warnings) =
+            render_template_safe("test", "{{ x }}", &json!({"x":"just plain ascii"})).unwrap();
         assert!(warnings.is_empty());
     }
 

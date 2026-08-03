@@ -126,10 +126,7 @@ pub enum TexError {
     ManifestParse { path: PathBuf, detail: String },
 
     #[error("template manifest at '{}' is missing required field '{field}'.", path.display())]
-    ManifestMissingField {
-        path: PathBuf,
-        field: &'static str,
-    },
+    ManifestMissingField { path: PathBuf, field: &'static str },
 
     #[error(
         "invalid template identifier: '{value}'. \
@@ -158,10 +155,7 @@ pub enum TexError {
 
     // ---- Trust (spec 007, range 70-79) ----
     #[error("trust denied by user for '{identifier}@{version}'; no compile performed.")]
-    TrustDenied {
-        identifier: String,
-        version: String,
-    },
+    TrustDenied { identifier: String, version: String },
 
     #[error(
         "trust file at '{}' is corrupted: {detail}. \
@@ -171,7 +165,9 @@ pub enum TexError {
     TrustFileCorrupted { path: PathBuf, detail: String },
 
     // ---- Resolve (spec 007, range 80-89) ----
-    #[error("JSON has no 'document.type' or 'document.template' field; cannot resolve a template.")]
+    #[error(
+        "JSON has no 'document.type' or 'document.template' field; cannot resolve a template."
+    )]
     MissingTypeField,
 
     #[error(
@@ -205,10 +201,7 @@ pub enum TexError {
          Compile aborted; no PDF produced.",
         path.display()
     )]
-    SandboxFilesystemEscape {
-        path: PathBuf,
-        identifier: String,
-    },
+    SandboxFilesystemEscape { path: PathBuf, identifier: String },
 
     #[error(
         "Tectonic bundle cache is empty — third-party template compiles require a warm cache. \

@@ -78,12 +78,7 @@ fn render_escapes_all_ten_latex_specials_in_json_value() {
     );
 
     base_cmd(&home)
-        .args([
-            "render",
-            "tpl",
-            data.to_str().unwrap(),
-            "--dry-run",
-        ])
+        .args(["render", "tpl", data.to_str().unwrap(), "--dry-run"])
         .assert()
         .success()
         .stdout(predicate::str::contains(r"\&"))
@@ -105,20 +100,10 @@ fn render_substitutes_em_dash_and_reports_via_tracing() {
     let home = TempDir::new().unwrap();
     let (templates, _output) = write_config(&home);
     seed_template(&templates, "tpl", "{{ text }}");
-    let data = seed_json(
-        &home.path().join("d"),
-        "d",
-        r#"{"text":"before—after"}"#,
-    );
+    let data = seed_json(&home.path().join("d"), "d", r#"{"text":"before—after"}"#);
 
     let assert = base_cmd(&home)
-        .args([
-            "-vv",
-            "render",
-            "tpl",
-            data.to_str().unwrap(),
-            "--dry-run",
-        ])
+        .args(["-vv", "render", "tpl", data.to_str().unwrap(), "--dry-run"])
         .assert()
         .success();
 
@@ -141,19 +126,10 @@ fn render_substitutes_en_dash() {
     let home = TempDir::new().unwrap();
     let (templates, _output) = write_config(&home);
     seed_template(&templates, "tpl", "{{ text }}");
-    let data = seed_json(
-        &home.path().join("d"),
-        "d",
-        r#"{"text":"pages 10–20"}"#,
-    );
+    let data = seed_json(&home.path().join("d"), "d", r#"{"text":"pages 10–20"}"#);
 
     base_cmd(&home)
-        .args([
-            "render",
-            "tpl",
-            data.to_str().unwrap(),
-            "--dry-run",
-        ])
+        .args(["render", "tpl", data.to_str().unwrap(), "--dry-run"])
         .assert()
         .success()
         .stdout(predicate::str::contains("pages 10--20"));
@@ -174,12 +150,7 @@ fn template_engine_collision_detected_at_load_time_with_line_and_col() {
     let data = seed_json(&home.path().join("d"), "d", r#"{"x":"whatever"}"#);
 
     base_cmd(&home)
-        .args([
-            "render",
-            "bad",
-            data.to_str().unwrap(),
-            "--dry-run",
-        ])
+        .args(["render", "bad", data.to_str().unwrap(), "--dry-run"])
         .assert()
         .failure()
         .stderr(predicate::str::contains("collision"))
@@ -196,12 +167,7 @@ fn plain_template_and_plain_json_renders_verbatim() {
     let data = seed_json(&home.path().join("d"), "d", r#"{"name":"world"}"#);
 
     base_cmd(&home)
-        .args([
-            "render",
-            "tpl",
-            data.to_str().unwrap(),
-            "--dry-run",
-        ])
+        .args(["render", "tpl", data.to_str().unwrap(), "--dry-run"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Hello world!"));

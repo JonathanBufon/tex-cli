@@ -145,12 +145,12 @@ Single-crate Rust CLI. Source lives under `src/`, tests under `tests/` at the re
 
 **Purpose**: Documentation, changelog, roadmap updates, and full quickstart validation. No user-facing behaviour change beyond copy.
 
-- [ ] T041 [P] Update `README.md` with the new `tex-cli build --json` and `tex-cli template …` subcommands, and add a link to `specs/007-auto-pdf-pipeline/quickstart.md`
-- [ ] T042 [P] Add `CHANGELOG.md` entry documenting the new subcommand tree and the new `document.template` JSON field
-- [ ] T043 [P] Update `ROADMAP.md` marking spec 007 as delivered
-- [ ] T044 Run [quickstart.md](./quickstart.md) end-to-end inside the project Docker container per project convention; capture any deviations as follow-up issues
-- [ ] T045 Run `cargo fmt --all` and `cargo clippy --all-targets -- -D warnings`; fix or justify every diagnostic
-- [ ] T046 [P] Regression test asserting FR-009 / SC-007 — compile the same JSON twice against the same built-in template and assert byte-identical PDFs; then repeat against an installed template with a fixed version — in `tests/cli_pipeline_deterministic.rs`
+- [X] T041 [P] `README.md` — new "JSON → PDF auto-pipeline (`build --json`) — spec 007" section, "Installable third-party templates (`template …`) — spec 007" section with security-model summary, links to spec 007 quickstart / manifest schema / JSON contract. Extended the exit-code table with all new codes 50-92.
+- [X] T042 [P] `CHANGELOG.md` — added spec 007 block under `[Unreleased]` with `### Added — spec 007` (all new subcommands, trust model, sandbox, zero-config, bundle warm-up, value types) and `### Changed — spec 007 (BREAKING)` (universal LaTeX escaping migration note, load-time collision detection, BuildOutcome shape change).
+- [X] T043 [P] `ROADMAP.md` — appended a 2026-08-03 Progress-log entry summarising the spec 007 delivery, with the Q1=C "library-only" note and a link back to `specs/007-auto-pdf-pipeline/`.
+- [ ] T044 Docker quickstart validation — image build kicked off in the background at commit time; user to run the full 7-step walkthrough in the container and file follow-ups for any deviation. Instructions live in `specs/007-auto-pdf-pipeline/quickstart.md`.
+- [X] T045 `cargo fmt --all` applied (13 files reformatted); `cargo clippy --all-targets -- -D warnings` returns **No issues found**.
+- [X] T046 [P] `tests/cli_pipeline_deterministic.rs` — 2 integration tests, both `requires_tectonic()`-gated: repeat built-in compile byte-identical; repeat installed-template-at-fixed-version compile byte-identical. Closes the FR-009 / SC-007 coverage gap raised in the `/speckit-analyze` report.
 
 ---
 
