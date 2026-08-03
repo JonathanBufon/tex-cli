@@ -133,12 +133,9 @@ Single-crate Rust CLI. Source lives under `src/`, tests under `tests/` at the re
 
 ### Tests for User Story 4 (write first, ensure FAIL) ⚠️
 
-- [ ] T038 [P] [US4] Write integration test that removes any pre-existing `~/.config/tex/config.toml` fixture, invokes `tex-cli build --json`, asserts PDF produced + config auto-created + stdout mentions the config path in `tests/cli_zero_config.rs`
-
-### Implementation for User Story 4
-
-- [ ] T039 [US4] Add missing-config detection at the entry of the build pipeline; on absent config, delegate to `config::create_default()` and log the path (FR-007) in `src/build.rs`
-- [ ] T040 [US4] Warm the Tectonic bundle cache during `tex-cli init` (existing subcommand) by running a no-op compile against `examples/templates/carta` (the smallest built-in — smallest bundle-cache footprint of the three A-04 templates) — enables all third-party compiles per research R1 cross-cutting note — in `src/config.rs` (or the init subcommand handler)
+- [X] T038 [P] [US4] `tests/cli_zero_config.rs` — 3 integration tests: (1) `build --json` in a bare home creates the config at the canonical XDG path and writes the "no config found" note to stderr; (2) second invocation does NOT re-announce (bootstrap only fires once); (3) explicit `build <template> <json>` still errors with `ConfigMissing` (exit 10) — US4 scope is intentionally limited to the `--json` path.
+- [X] T039 [US4] `Config::default_bootstrap()` in `src/config.rs` (templates_dir=`~/.config/tex/templates`, output_dir=cwd, engine=`tectonic`). `handle_build` catches `TexError::ConfigMissing` on the `--json` route and calls `bootstrap_default_config` in `src/cli.rs` (creates parent dir, best-effort creates templates_dir, atomic save, prints the path + defaults to stderr as a "note"). PDF pipeline continues unchanged.
+- [X] T040 [US4] `warm_tectonic_bundle_cache()` added to `src/cli.rs`; invoked at the end of `handle_init` when the chosen engine is tectonic. Uses an embedded (no external file) 4-line minimal LaTeX fixture, runs tectonic in a `tempfile::TempDir`, silences stdout/stderr, prints a one-line progress note. Never fails init — missing tectonic prints an informational note referring the user to `SandboxBundleMissing` for the follow-up. Adapted from tasks.md's `examples/templates/carta` recommendation: an embedded fixture avoids depending on the examples/ layout being present at runtime, and the file is smaller than any of the three A-04 templates.
 
 **Checkpoint**: US4 is independently verifiable; a fresh-machine scenario produces a PDF with a single command.
 

@@ -184,6 +184,24 @@ impl Config {
         }
     }
 
+    /// Spec 007 FR-007 / US4: build a default config for the zero-config
+    /// first-run path (no user prompts). Paths:
+    /// * templates_dir → `~/.config/tex/templates`
+    /// * output_dir    → the current working directory
+    /// * engine        → `tectonic` (constitution IV default)
+    pub fn default_bootstrap() -> Result<Self, TexError> {
+        let cfg_root = dirs::config_dir()
+            .ok_or(TexError::HomeDirUnavailable)?
+            .join("tex");
+        let templates_dir = cfg_root.join("templates");
+        let output_dir = std::env::current_dir().map_err(TexError::Io)?;
+        Ok(Self::new_from_prompts(
+            templates_dir,
+            output_dir,
+            "tectonic".to_string(),
+        ))
+    }
+
     pub fn apply(&mut self, key: ConfigKey, raw_value: &str) -> Result<AppliedChange, TexError> {
         match key {
             ConfigKey::PathsTemplatesDir => {

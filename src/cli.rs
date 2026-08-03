@@ -319,7 +319,71 @@ pub fn handle_init(args: InitArgs) -> Result<()> {
     cfg.save_atomic(&config_path)?;
 
     println!("Config written to: {}", config_path.display());
+
+    // Spec 007 T040 / research R1 cross-cutting: warm the Tectonic bundle
+    // cache after init so subsequent third-party-template compiles (which
+    // run with --only-cached under the FR-017 sandbox) succeed without a
+    // separate priming step. Only meaningful for the tectonic engine.
+    if cfg.compiler.engine == "tectonic" {
+        warm_tectonic_bundle_cache();
+    }
     Ok(())
+}
+
+/// Spec 007 T040: run a minimal no-op compile against an embedded fixture
+/// to populate Tectonic's bundle cache. Emits progress on stderr but never
+/// fails init — an unavailable tectonic just prints an informational note.
+fn warm_tectonic_bundle_cache() {
+    // Minimal well-formed LaTeX — no non-ASCII, no fancy packages, so the
+    // fixture stays stable across LaTeX distributions and Tectonic versions.
+    const INIT_FIXTURE_TEX: &str = "\\documentclass{article}\n\\begin{document}\nInit OK.\n\\end{document}\n";
+
+    if which::which("tectonic").is_err() {
+        eprintln!(
+            "note: tectonic not on PATH — bundle cache not warmed. \
+             Third-party template compiles will surface \
+             SandboxBundleMissing until this is fixed."
+        );
+        return;
+    }
+
+    let tmp = match tempfile::TempDir::new() {
+        Ok(t) => t,
+        Err(e) => {
+            eprintln!("note: could not create tempdir for cache warm-up: {e}");
+            return;
+        }
+    };
+    let tex_path = tmp.path().join("init.tex");
+    if let Err(e) = std::fs::write(&tex_path, INIT_FIXTURE_TEX) {
+        eprintln!("note: could not write cache warm-up fixture: {e}");
+        return;
+    }
+
+    eprintln!("Warming Tectonic bundle cache (one-time; may take ~30s)...");
+    let status = std::process::Command::new("tectonic")
+        .args(["--keep-intermediates=false", "--keep-logs=false"])
+        .arg(&tex_path)
+        .current_dir(tmp.path())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status();
+
+    match status {
+        Ok(s) if s.success() => {
+            eprintln!("Tectonic bundle cache warmed.");
+        }
+        Ok(s) => {
+            eprintln!(
+                "note: cache warm-up compile returned exit {}. Third-party \
+                 template compiles may still work if the cache was already primed.",
+                s.code().unwrap_or(-1)
+            );
+        }
+        Err(e) => {
+            eprintln!("note: could not run tectonic for cache warm-up: {e}");
+        }
+    }
 }
 
 fn resolve_answers(args: &InitArgs) -> Result<(std::path::PathBuf, std::path::PathBuf, String)> {
@@ -503,12 +567,21 @@ pub fn handle_build(args: BuildArgs) -> Result<()> {
     use std::io::IsTerminal;
 
     let path = config_file_path()?;
-    let cfg = Config::load(&path)?;
 
-    // Spec 007 US1 route: `--json <source>` — resolve template from the JSON.
+    // Spec 007 US1 + US4 route: `--json <source>`. When no config exists
+    // (FR-007), silently bootstrap a default one at the canonical location
+    // and continue — the user should never need a separate `init` step
+    // just to compile a JSON.
     if let Some(json_source) = args.json.as_deref() {
+        let cfg = match Config::load(&path) {
+            Ok(c) => c,
+            Err(TexError::ConfigMissing) => bootstrap_default_config(&path)?,
+            Err(other) => return Err(anyhow::Error::new(other)),
+        };
         return handle_build_from_json(&cfg, &args, json_source);
     }
+
+    let cfg = Config::load(&path)?;
 
     let (template_name, data_source) = match (&args.template_name, &args.data_source) {
         (Some(t), Some(d)) => (t.clone(), d.clone()),
@@ -579,6 +652,34 @@ pub fn handle_build(args: BuildArgs) -> Result<()> {
         );
     }
     Ok(())
+}
+
+/// Spec 007 T039 / FR-007: create the default config at `path`, ensure
+/// its templates_dir exists, and print where it was written so the user
+/// knows for future runs.
+fn bootstrap_default_config(path: &std::path::Path) -> Result<Config> {
+    let cfg = Config::default_bootstrap()?;
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    // Best-effort: create the templates_dir so the pipeline can enumerate
+    // built-ins even in a completely bare environment.
+    std::fs::create_dir_all(&cfg.paths.templates_dir).ok();
+    cfg.save_atomic(path)?;
+    eprintln!(
+        "note: no config found — created default at {}",
+        path.display()
+    );
+    eprintln!(
+        "      templates_dir: {}",
+        cfg.paths.templates_dir.display()
+    );
+    eprintln!(
+        "      output_dir:    {} (current working directory)",
+        cfg.paths.output_dir.display()
+    );
+    eprintln!("      engine:        {}", cfg.compiler.engine);
+    Ok(cfg)
 }
 
 /// Spec 007 US1 (T012–T014): `tex-cli build --json <source>` — resolve
